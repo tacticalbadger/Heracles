@@ -100,6 +100,7 @@ signature so the updater can verify the publisher — instructions in
 - [`CHANGELOG.md`](./CHANGELOG.md) — notable changes per release
 - [`ROADMAP.md`](./ROADMAP.md) — known gaps and planned work
 - [`docs/architecture.md`](./docs/architecture.md) — goals, stack, and design notes
+- [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md) — code review findings (fixed and open) and the Swift + Rust rewrite plan
 - [`BUILDING.md`](./BUILDING.md) — build, package, and distribution guide
 - [`windowsInstructions.md`](./windowsInstructions.md) — sign & ship the official Windows build
 

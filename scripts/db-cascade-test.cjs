@@ -1,4 +1,5 @@
-// Functional test of electron/db.cjs against a throwaway SQLite database.
+// Functional test of electron/db.cjs against a throwaway SQLite database,
+// plus the window navigation policy in electron/navigation.cjs.
 // Run with: npm test
 //
 // better-sqlite3 is compiled for Electron's ABI (postinstall runs
@@ -97,6 +98,26 @@ const cycleMove = db.setNoteParent({ id: a.id, parentId: b.id });
 check('setNoteParent refuses own descendant as parent', cycleMove.parentId === section.id);
 const validMove = db.setNoteParent({ id: b.id, parentId: section.id });
 check('setNoteParent still performs valid moves', validMove.parentId === section.id);
+
+// 8. navigation policy: a window may only display the app's own document
+const { createNavigationPolicy } = require(path.join(__dirname, '..', 'electron', 'navigation.cjs'));
+const indexPath = path.join(os.tmpdir(), 'Heracles App', 'dist', 'renderer', 'index.html');
+const indexUrl = require('url').pathToFileURL(indexPath).href;
+const packaged = createNavigationPolicy({ isPackaged: true, indexPath });
+check('packaged: app index is allowed', packaged.isAppUrl(indexUrl));
+check('packaged: app index with a note hash is allowed', packaged.isAppUrl(`${indexUrl}#note=abc`));
+check(
+  'packaged: another local file is refused',
+  !packaged.isAppUrl(require('url').pathToFileURL(path.join(os.tmpdir(), 'evil.html')).href)
+);
+check('packaged: remote url is refused', !packaged.isAppUrl('https://example.com/index.html'));
+check('packaged: malformed url is refused', !packaged.isAppUrl('not a url'));
+const dev = createNavigationPolicy({ isPackaged: false, indexPath });
+check('dev: vite server is allowed', dev.isAppUrl('http://localhost:5173/#note=abc'));
+check('dev: lookalike port is refused', !dev.isAppUrl('http://localhost:51730/'));
+check('dev: local file is refused', !dev.isAppUrl(indexUrl));
+check('http(s) links count as external', dev.isExternalUrl('https://example.com/a'));
+check('javascript: urls are not external', !dev.isExternalUrl('javascript:alert(1)'));
 
 fs.rmSync(dir, { recursive: true, force: true });
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} FAILURES`);

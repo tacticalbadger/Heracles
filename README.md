@@ -61,7 +61,7 @@ Starts Vite on `http://localhost:5173` and launches the Electron shell with DevT
 | `npm run release:win` | Build a Windows NSIS installer for distribution (run on Windows) |
 | `npm run release:upload` | Upload the built release + update feed to the R2 bucket |
 | `npm run preview` | Preview the built renderer in a browser (no Electron) |
-| `npm test` | Functional test of the SQLite layer (`scripts/db-cascade-test.cjs`) |
+| `npm test` | Functional test of the SQLite layer and window navigation policy (`scripts/db-cascade-test.cjs`) |
 
 For full build/packaging/distribution instructions on both macOS and Windows
 (including code signing notes and cross-compilation via Docker), see
@@ -122,6 +122,7 @@ own repo.
 ```
 electron/                  Electron main + preload + SQLite layer
 ├── main.cjs               BrowserWindow lifecycle, IPC handlers
+├── navigation.cjs         Which URLs a window may display (app document only)
 ├── preload.cjs            window.heracles bridge (contextBridge)
 ├── db.cjs                 better-sqlite3 + drizzle schema & queries
 └── migrations/            drizzle migrations

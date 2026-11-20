@@ -33,6 +33,9 @@ const {
   deleteComment,
   seedDefaultColumns
 } = require('./db.cjs');
+const { createNavigationPolicy } = require('./navigation.cjs');
+
+const APP_INDEX_PATH = path.join(__dirname, '../dist/renderer/index.html');
 
 let mainWindow;
 const extraWindows = new Set();
@@ -54,12 +57,13 @@ const createWindow = ({ initialNoteId } = {}) => {
   const hashSuffix = initialNoteId ? `#note=${encodeURIComponent(initialNoteId)}` : '';
 
   // Navigation policy: the window may only ever display the app itself.
-  // External links open in the system browser; everything else is denied —
-  // without this, a stray navigation/window.open would load remote content
-  // in a context that has the preload DB bridge attached.
-  const isExternalUrl = (url) => /^https?:/i.test(url);
-  const isAppUrl = (url) =>
-    app.isPackaged ? url.startsWith('file://') : url.startsWith('http://localhost:5173');
+  // External links open in the system browser; everything else is denied,
+  // including other local files (a file dropped on the window would otherwise
+  // navigate to it). Anything loaded here gets the preload DB bridge.
+  const { isAppUrl, isExternalUrl } = createNavigationPolicy({
+    isPackaged: app.isPackaged,
+    indexPath: APP_INDEX_PATH
+  });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (isExternalUrl(url) && !isAppUrl(url)) {
@@ -80,7 +84,7 @@ const createWindow = ({ initialNoteId } = {}) => {
     win.loadURL(`http://localhost:5173/${hashSuffix}`);
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
-    win.loadFile(path.join(__dirname, '../dist/renderer/index.html'), {
+    win.loadFile(APP_INDEX_PATH, {
       hash: hashSuffix.replace(/^#/, '')
     });
   }

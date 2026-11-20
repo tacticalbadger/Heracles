@@ -92,10 +92,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refuses to move a note under itself or one of its descendants (the same
   guard `reorderNote` already had); a cycle would detach the subtree from the
   sidebar permanently. Covered by new `npm test` cases.
-- **Windows can only navigate to the app itself.** A navigation/window-open
-  policy denies all other targets: external `http(s)` links now open in the
-  system browser (previously they did nothing), and remote content can never
-  load inside a window that has the preload database bridge attached.
+- **Windows can only display the app itself.** A navigation/window-open
+  policy (`electron/navigation.cjs`) allows only the app's own document and
+  denies everything else: a window can no longer be navigated to another local
+  file (e.g. one dropped onto it) or to a remote page, either of which would
+  have loaded with the preload database bridge attached. Any `http(s)`
+  navigation is handed to the system browser instead. Clicking a link while
+  editing still does nothing (the editor sets `openOnClick: false`).
 - **Deleting a page no longer orphans its children.** Permanent delete and
   "Empty trash" now remove the whole subtree, plus any kanban data (columns,
   tasks, comments) owned by deleted todo lists. Previously children stayed in

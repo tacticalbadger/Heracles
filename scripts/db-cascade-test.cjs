@@ -88,6 +88,16 @@ check('deleteNote removed kanban tasks', db.listTasks(t2.id).length === 0);
 const lastDel = db.deleteNote({ id: notebook.id });
 check('last notebook refuses deletion', lastDel.success === false);
 
+// 7. setNoteParent refuses to create cycles ("Move to…" path)
+const a = db.createNote({ title: 'A', kind: 'page', parentId: section.id });
+const b = db.createNote({ title: 'B', kind: 'page', parentId: a.id });
+const selfMove = db.setNoteParent({ id: a.id, parentId: a.id });
+check('setNoteParent refuses self as parent', selfMove.parentId === section.id);
+const cycleMove = db.setNoteParent({ id: a.id, parentId: b.id });
+check('setNoteParent refuses own descendant as parent', cycleMove.parentId === section.id);
+const validMove = db.setNoteParent({ id: b.id, parentId: section.id });
+check('setNoteParent still performs valid moves', validMove.parentId === section.id);
+
 fs.rmSync(dir, { recursive: true, force: true });
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);

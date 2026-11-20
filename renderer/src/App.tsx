@@ -131,6 +131,22 @@ const App = () => {
   const pendingSaves = useRef(new Map<string, { content: string; title: string }>());
   const initRan = useRef(false);
 
+  // Server rows can be staler than the editor: a debounced save may still be
+  // pending when a metadata update (icon/favorite/archive) or a list refresh
+  // returns DB copies. Overlay pending edits so they are never clobbered —
+  // without this, replacing state with the DB row makes the editor reset to
+  // the older content and silently drop the last ~600ms of typing.
+  const mergePendingEdits = useCallback((note: Note): Note => {
+    const pending = pendingSaves.current.get(note.id);
+    return pending ? { ...note, content: pending.content, title: pending.title } : note;
+  }, []);
+
+  const withPendingEdits = useCallback(
+    (list: Note[]): Note[] =>
+      pendingSaves.current.size === 0 ? list : list.map(mergePendingEdits),
+    [mergePendingEdits]
+  );
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('heracles-theme', theme);
@@ -363,20 +379,25 @@ const App = () => {
       if (!window.heracles?.notes) return;
       const result = await window.heracles.notes.update({ id: noteId, icon });
       if (result) {
+        const merged = mergePendingEdits(result);
         setNotes((current) =>
-          sortNotes(current.map((note) => (note.id === noteId ? result : note)))
+          sortNotes(current.map((note) => (note.id === noteId ? merged : note)))
         );
       }
     },
-    []
+    [mergePendingEdits]
   );
 
   // Note CRUD
-  const replaceNote = useCallback((updated: Note) => {
-    setNotes((current) =>
-      sortNotes(current.map((note) => (note.id === updated.id ? updated : note)))
-    );
-  }, []);
+  const replaceNote = useCallback(
+    (updated: Note) => {
+      const merged = mergePendingEdits(updated);
+      setNotes((current) =>
+        sortNotes(current.map((note) => (note.id === merged.id ? merged : note)))
+      );
+    },
+    [mergePendingEdits]
+  );
 
   // Close all tabs for the given notes in every pane, collapsing emptied panes.
   // Does not modify the notes list.
@@ -449,10 +470,10 @@ const App = () => {
       kind: 'notebook'
     });
     const refreshed = await window.heracles.notes.list();
-    setNotes(refreshed);
+    setNotes(withPendingEdits(refreshed));
     setAutoRenameId(created.id);
     pushToast('Notebook created', 'success');
-  }, [pushToast]);
+  }, [pushToast, withPendingEdits]);
 
   const handleNewNote = useCallback(async () => {
     if (!window.heracles?.notes) return;
@@ -649,7 +670,7 @@ const App = () => {
         // Trash cascades to the subtree in the DB — refresh, then close every
         // affected tab and collapse any pane that becomes empty.
         const refreshed = await window.heracles.notes.list();
-        setNotes(refreshed);
+        setNotes(withPendingEdits(refreshed));
         closeNoteTabsEverywhere([note.id, ...collectDescendantIds(note.id)]);
         pushToast(
           'Moved to trash',
@@ -660,7 +681,7 @@ const App = () => {
               window.heracles.notes.restore({ id: note.id }).then(async (restored) => {
                 if (restored) {
                   const list = await window.heracles.notes.list();
-                  setNotes(list);
+                  setNotes(withPendingEdits(list));
                 }
               });
             }
@@ -669,7 +690,7 @@ const App = () => {
         );
       }
     },
-    [closeNoteTabsEverywhere, collectDescendantIds, pushToast]
+    [closeNoteTabsEverywhere, collectDescendantIds, pushToast, withPendingEdits]
   );
 
   const handleRestoreNote = useCallback(
@@ -679,11 +700,11 @@ const App = () => {
       if (updated) {
         // Restore cascades to the subtree (and may reparent) — refresh.
         const refreshed = await window.heracles.notes.list();
-        setNotes(refreshed);
+        setNotes(withPendingEdits(refreshed));
         pushToast('Restored', 'success');
       }
     },
-    [pushToast]
+    [pushToast, withPendingEdits]
   );
 
   const handleDeleteNote = useCallback(
@@ -698,7 +719,7 @@ const App = () => {
         // The notebook's contents were reassigned to another notebook in the DB —
         // refresh so the moved items show under their new home.
         const refreshed = await window.heracles.notes.list();
-        setNotes(refreshed);
+        setNotes(withPendingEdits(refreshed));
         pushToast('Notebook deleted', 'danger');
         return;
       }
@@ -739,10 +760,18 @@ const App = () => {
       const existing = saveTimers.current.get(noteId);
       if (existing) window.clearTimeout(existing);
 
-      pendingSaves.current.set(noteId, { content, title });
+      const payload = { content, title };
+      pendingSaves.current.set(noteId, payload);
       const timeout = window.setTimeout(async () => {
-        pendingSaves.current.delete(noteId);
-        const result = await window.heracles.notes.update({ id: noteId, content, title });
+        // Read at fire time: a rename may have rewritten the pending title.
+        const latest = pendingSaves.current.get(noteId) ?? payload;
+        const result = await window.heracles.notes.update({ id: noteId, ...latest });
+        // Clear the pending marker only after the save lands, and only if a
+        // newer edit hasn't replaced it mid-flight — until then, list refreshes
+        // must keep overlaying this content so the DB copy can't clobber it.
+        if (pendingSaves.current.get(noteId) === latest) {
+          pendingSaves.current.delete(noteId);
+        }
         if (result) {
           setSaveState({ status: 'saved', noteId, lastSavedAt: result.updatedAt });
         }
@@ -792,6 +821,12 @@ const App = () => {
         )
       );
       if (!window.heracles?.notes) return;
+      // If a debounced content save is still pending, rewrite its title so the
+      // upcoming save carries the rename instead of clobbering it.
+      const pending = pendingSaves.current.get(noteId);
+      if (pending) {
+        pendingSaves.current.set(noteId, { ...pending, title: trimmed });
+      }
       const result = await window.heracles.notes.update({
         id: noteId,
         title: trimmed,
@@ -902,9 +937,9 @@ const App = () => {
       // Refresh from server: the reorder mutates many notes' positions.
       await window.heracles.notes.reorder({ id: noteId, parentId, beforeId });
       const refreshed = await window.heracles.notes.list();
-      setNotes(refreshed);
+      setNotes(withPendingEdits(refreshed));
     },
-    []
+    [withPendingEdits]
   );
 
   const handleCreateSection = useCallback(
@@ -916,11 +951,11 @@ const App = () => {
         parentId: parentId ?? resolveNotebookId()
       });
       const refreshed = await window.heracles.notes.list();
-      setNotes(refreshed);
+      setNotes(withPendingEdits(refreshed));
       setAutoRenameId(created.id);
       pushToast('Section created', 'success');
     },
-    [resolveNotebookId, pushToast]
+    [resolveNotebookId, pushToast, withPendingEdits]
   );
 
   const handleCreateTodoList = useCallback(

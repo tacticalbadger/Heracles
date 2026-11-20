@@ -76,6 +76,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Typing is no longer reverted by metadata updates.** Toggling favorite,
+  archiving, changing a page's icon, or any sidebar refresh while an autosave
+  was still pending (the 600 ms debounce) replaced the in-memory note with the
+  older database copy, resetting the editor and silently dropping the last
+  moments of typing. Pending edits are now overlaid on every server response
+  until the save lands, and a rename during the debounce window updates the
+  pending payload instead of being clobbered by it.
+- **Dragging a kanban card no longer also drags its column.** The card's
+  dragstart bubbled into the draggable column, stamping the column-reorder
+  payload onto the same drag — so moving a card across columns could also
+  reorder the source column (and mis-style it). Card drags now stop
+  propagation, and card drops take priority over column drops.
+- **"Move to…" can no longer create a parent cycle.** `setNoteParent` now
+  refuses to move a note under itself or one of its descendants (the same
+  guard `reorderNote` already had); a cycle would detach the subtree from the
+  sidebar permanently. Covered by new `npm test` cases.
+- **Windows can only navigate to the app itself.** A navigation/window-open
+  policy denies all other targets: external `http(s)` links now open in the
+  system browser (previously they did nothing), and remote content can never
+  load inside a window that has the preload database bridge attached.
 - **Deleting a page no longer orphans its children.** Permanent delete and
   "Empty trash" now remove the whole subtree, plus any kanban data (columns,
   tasks, comments) owned by deleted todo lists. Previously children stayed in

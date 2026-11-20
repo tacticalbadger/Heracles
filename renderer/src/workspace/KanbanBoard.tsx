@@ -291,6 +291,10 @@ export const KanbanBoard = ({
   // ── Drag and drop ───────────────────────────────────────────────────────
   const handleTaskDragStart = useCallback(
     (task: Task, event: ReactDragEvent<HTMLDivElement>) => {
+      // The card sits inside a draggable column — without this the dragstart
+      // bubbles up and the column handler also stamps COLUMN_DRAG_MIME on the
+      // same drag, so dropping the card would *also* reorder columns.
+      event.stopPropagation();
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData(TASK_DRAG_MIME, task.id);
       event.dataTransfer.setData('text/plain', task.title || 'Untitled');
@@ -549,12 +553,11 @@ export const KanbanBoard = ({
               onDragStart={(event) => handleColumnDragStart(column, event)}
               onDragEnd={handleColumnDragEnd}
               onDragOver={(event) => {
-                // Handle task/card drag over (dropping tasks into column)
+                // A drag carrying a task/subtask is a card move — never treat
+                // it as a column reorder, even if both types are present.
                 if (event.dataTransfer.types.includes(TASK_DRAG_MIME) || event.dataTransfer.types.includes(SUBTASK_DRAG_MIME)) {
                   handleColumnDragOver(column, event);
-                }
-                // Handle column drag over (reordering columns)
-                if (event.dataTransfer.types.includes(COLUMN_DRAG_MIME)) {
+                } else if (event.dataTransfer.types.includes(COLUMN_DRAG_MIME)) {
                   handleColumnHeaderDragOver(column, event);
                 }
               }}
@@ -563,12 +566,10 @@ export const KanbanBoard = ({
                 handleColumnHeaderDragLeave(event);
               }}
               onDrop={(event) => {
-                // Handle task/card drop
+                // Card drop wins; only a pure column drag reorders columns.
                 if (event.dataTransfer.types.includes(TASK_DRAG_MIME) || event.dataTransfer.types.includes(SUBTASK_DRAG_MIME)) {
                   handleColumnDrop(column, event);
-                }
-                // Handle column drop
-                if (event.dataTransfer.types.includes(COLUMN_DRAG_MIME)) {
+                } else if (event.dataTransfer.types.includes(COLUMN_DRAG_MIME)) {
                   handleColumnHeaderDrop(column, event);
                 }
               }}

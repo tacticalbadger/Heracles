@@ -417,10 +417,16 @@ const resolveParentId = (note, requestedParentId) => {
 const setNoteParent = ({ id, parentId }) => {
   const existing = getNote(id);
   if (!existing) return null;
+  const targetParentId = resolveParentId(existing, parentId ?? null);
+  // Guard against cycles (moving a note into its own subtree would detach it
+  // from the tree forever). Mirrors the check in reorderNote.
+  if (isSelfOrDescendant(targetParentId, id)) {
+    return existing;
+  }
   const now = new Date().toISOString();
   orm
     .update(notes)
-    .set({ parentId: resolveParentId(existing, parentId ?? null), updatedAt: now })
+    .set({ parentId: targetParentId, updatedAt: now })
     .where(eq(notes.id, id))
     .run();
   return getNote(id);

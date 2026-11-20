@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -52,6 +52,29 @@ const createWindow = ({ initialNoteId } = {}) => {
   });
 
   const hashSuffix = initialNoteId ? `#note=${encodeURIComponent(initialNoteId)}` : '';
+
+  // Navigation policy: the window may only ever display the app itself.
+  // External links open in the system browser; everything else is denied —
+  // without this, a stray navigation/window.open would load remote content
+  // in a context that has the preload DB bridge attached.
+  const isExternalUrl = (url) => /^https?:/i.test(url);
+  const isAppUrl = (url) =>
+    app.isPackaged ? url.startsWith('file://') : url.startsWith('http://localhost:5173');
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isExternalUrl(url) && !isAppUrl(url)) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  win.webContents.on('will-navigate', (event, url) => {
+    if (isAppUrl(url)) return;
+    event.preventDefault();
+    if (isExternalUrl(url)) {
+      shell.openExternal(url);
+    }
+  });
 
   if (!app.isPackaged) {
     win.loadURL(`http://localhost:5173/${hashSuffix}`);

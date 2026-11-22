@@ -7,48 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Native Mac app
-
-Changes to the native app since 0.2.1. Its next version is 0.3.0. The
-sections after this one are the Electron app's.
-
-- **The editor is native.** The web editor in a web view is gone, and with it
-  the last web technology in the native app. Each block's text is a system
-  text view, so typing, selection, spelling, text replacement, dictation and
-  input methods behave as they do in every other Mac app. The app no longer
-  loads WebKit or bundles any JavaScript.
-- **Blocks.** Paragraphs, headings, bullet, numbered and task lists nested to
-  any depth, quotes, callouts, toggles, code blocks with a language menu,
-  dividers, images and column layouts with dividers to drag. Notes written
-  with the web editor open unchanged: the stored format is the same.
-- **Keys.** Return splits a block and ends a list on an empty item. Backspace
-  at the start of a block joins it to the one above. Tab and Shift-Tab indent
-  and outdent list items. The arrow keys cross from block to block and keep
-  their column. Shift with an arrow at the edge of a block, a drag from one
-  block into another, or a second Select All selects whole blocks, which can
-  be copied, cut, deleted, moved or indented together.
-- **Markdown as you type.** `# `, `- `, `1. `, `[] `, `> `, ` ``` ` and `---`
-  at the start of a line make the block. `**bold**`, `*italic*`, `` `code` ``
-  and `~~struck~~` make the mark. A web address becomes a link when the space
-  after it is typed.
-- **Slash menu.** `/` where a word could start lists the kinds of block, and
-  narrows as you type.
-- **Block handle.** The handle beside the block under the pointer adds a block
-  below, drags the block to a new place or to the right-hand end of another to
-  make columns, and opens a menu to turn the block into another kind,
-  duplicate it, copy a link to it or delete it.
-- **Format menu**, with shortcuts for bold, italic, strikethrough, code,
-  headings and lists. ⌘K links the selected text, and is still Quick Open when
-  nothing is selected.
-- **Undo and redo for the whole note**, not one block at a time.
-- **Copy and paste.** Blocks copy to other apps as Markdown, and back into
-  Heracles as blocks. Rich text from other apps still goes through the core's
-  allow-list. A web address pasted over selected text links it. Pictures can
-  be pasted, or dropped in as files.
-- **Removed:** the floating toolbar over selected text. The Format menu, its
-  shortcuts and the context menu do its job.
-- The native build no longer needs Node.js.
-
 ### Added
 
 - **`npm run release:upload`** — uploads a built release (installer, zip,
@@ -206,6 +164,67 @@ sections after this one are the Electron app's.
 - New IPC: `notes.importMarkdown()` and `notes.importHtml()` open native
   multi-select file dialogs and return file names + contents.
 
+## [0.3.0] - 2026-11-22
+
+The native Mac app's second preview. The editor is now native, and the
+download is notarized, so it opens without a detour through System Settings.
+It is `Heracles-0.3.0-mac.zip` on the
+[release page](https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.0):
+a universal app for macOS 14 or later. It does not update itself.
+
+As with 0.2.1, this version number belongs to the native app only. The
+Electron app's changes are under Unreleased above.
+
+### Added
+
+- **The editor is native.** The web editor in a web view is gone, and with it
+  the last web technology in the native app. Each block's text is a system
+  text view, so typing, selection, spelling, text replacement, dictation and
+  input methods behave as they do in every other Mac app. The app no longer
+  loads WebKit or bundles any JavaScript.
+- **Blocks.** Paragraphs, headings, bullet, numbered and task lists nested to
+  any depth, quotes, callouts, toggles, code blocks with a language menu,
+  dividers, images and column layouts with dividers to drag. Notes written
+  with the web editor open unchanged: the stored format is the same.
+- **Keys.** Return splits a block and ends a list on an empty item. Backspace
+  at the start of a block joins it to the one above. Tab and Shift-Tab indent
+  and outdent list items. The arrow keys cross from block to block and keep
+  their column. Shift with an arrow at the edge of a block, a drag from one
+  block into another, or a second Select All selects whole blocks, which can
+  be copied, cut, deleted, moved or indented together.
+- **Markdown as you type.** `# `, `- `, `1. `, `[] `, `> `, ` ``` ` and `---`
+  at the start of a line make the block. `**bold**`, `*italic*`, `` `code` ``
+  and `~~struck~~` make the mark. A web address becomes a link when the space
+  after it is typed.
+- **Slash menu.** `/` where a word could start lists the kinds of block, and
+  narrows as you type.
+- **Block handle.** The handle beside the block under the pointer adds a block
+  below, drags the block to a new place or to the right-hand end of another to
+  make columns, and opens a menu to turn the block into another kind,
+  duplicate it, copy a link to it or delete it.
+- **Format menu**, with shortcuts for bold, italic, strikethrough, code,
+  headings and lists. ⌘K links the selected text, and is still Quick Open when
+  nothing is selected.
+- **Undo and redo for the whole note**, not one block at a time.
+- **Copy and paste.** Blocks copy to other apps as Markdown, and back into
+  Heracles as blocks. Rich text from other apps still goes through the core's
+  allow-list. A web address pasted over selected text links it. Pictures can
+  be pasted, or dropped in as files.
+
+### Changed
+
+- The download is notarized by Apple and has its ticket stapled.
+- A click on a link opens it. The web editor wanted ⌘-click.
+- The native build no longer needs Node.js. `macos/release.sh` also accepts an
+  Apple ID with an app-specific password, and checks the credentials with
+  Apple before it builds.
+
+### Removed
+
+- The web editor in a web view, and WebKit with it.
+- The floating toolbar over selected text. The Format menu, its shortcuts and
+  the context menu do its job.
+
 ## [0.2.1] - 2026-11-22
 
 The first preview of the native Mac app. This version number belongs to the
@@ -290,6 +309,7 @@ the same app with the download attached.
   boundary.
 
 [Unreleased]: https://github.com/
+[0.3.0]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.0
 [0.2.1]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.1
 [0.2.0]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.0
 [0.1.0]: https://github.com/

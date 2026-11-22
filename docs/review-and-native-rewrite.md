@@ -214,10 +214,10 @@ foreign keys. It writes a backup first, as the notebook migration does today.
 
 ## Rewrite status
 
-Updated 2026-11-22. Version 0.2.1 of the native app is published as a
-preview on the GitHub releases page, signed and not notarized. The native
-editor (option A) was built after it and is not in a release yet. The
-Electron app is unchanged and is still the one that updates itself.
+Updated 2026-11-22. Version 0.3.0 of the native app is published as a
+preview on the GitHub releases page, signed and notarized, with the native
+editor (option A). The Electron app is unchanged and is still the one that
+updates itself.
 
 ### Built
 
@@ -364,13 +364,10 @@ These were made to keep moving. Each is easy to change now and harder later.
 
 ### Not verified
 
-- **Notarization has not been run, and 0.2.1 was published without it.** The
-  script was run as far as signing: the build is signed with the Developer ID
-  certificate, has the hardened runtime, a secure timestamp and no
-  entitlements, and passes its self-test in that state. No notary credentials
-  were available where it was built, so the submit and staple steps have
-  never run. Until they do, macOS refuses to open a downloaded copy the first
-  time, and it has to be allowed under System Settings → Privacy & Security.
+- 0.2.1 was published without notarization, and stays that way: macOS
+  refuses to open a downloaded copy of it the first time. 0.3.0 is
+  notarized: Apple accepted it, the ticket is stapled, and Gatekeeper passes
+  the app taken back out of its zip.
 - The importer has only been run on databases built by its tests. No real
   Electron library was on the machine it was written on. Try it first with
   `HERACLES_DATA_DIR` pointing at a copy.

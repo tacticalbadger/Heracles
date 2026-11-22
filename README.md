@@ -8,9 +8,9 @@ Heracles is a native Mac app, written in Swift over a Rust core. It replaces the
 
 The native app is a preview. The latest build is on the [releases page](https://github.com/tacticalbadger/Heracles/releases): a universal app for macOS 14 or later.
 
-- The build is signed with a Developer ID certificate and is not notarized, so macOS refuses to open it the first time. Allow it under System Settings → Privacy & Security → Open Anyway.
+- The build is signed with a Developer ID certificate and notarized by Apple, so it opens like any other downloaded app.
 - It does not update itself yet. To install a newer version, replace the app.
-- The published preview, 0.2.1, still has the web editor from the Electron app inside it. The native editor described below is in this repository and will be in the next release.
+- Nobody has used it day to day yet. It passes its automated tests, which cannot move a mouse.
 - The first time it starts, it copies an existing Electron library into its own database. See [Data storage](#data-storage).
 
 What is built, what is missing and what has not been checked is recorded in the [rewrite status](./docs/review-and-native-rewrite.md#rewrite-status).

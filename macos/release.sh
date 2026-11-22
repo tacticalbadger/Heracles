@@ -8,13 +8,18 @@
 # Signing needs the Developer ID Application certificate in the keychain.
 # Set CODESIGN_IDENTITY to use a different one.
 #
-# Notarizing needs credentials, given in either of two ways:
+# Notarizing needs credentials, given in one of three ways:
 #   - the same three variables the Electron release uses:
 #       APPLE_API_KEY      path to the App Store Connect API key (.p8)
 #       APPLE_API_KEY_ID   the key's id
 #       APPLE_API_ISSUER   the issuer id
+#   - an Apple ID and an app-specific password made for it at
+#     account.apple.com:
+#       APPLE_ID                      the Apple ID, an email address
+#       APPLE_APP_SPECIFIC_PASSWORD   the app-specific password
+#       APPLE_TEAM_ID                 the team id, if not the signing identity's
 #   - or NOTARY_PROFILE, the name of a profile saved once with
-#       xcrun notarytool store-credentials <name> --key ... --key-id ... --issuer ...
+#       xcrun notarytool store-credentials <name> ...
 #
 # Produces build/Heracles.app and build/Heracles-<version>-mac.zip.
 set -eu
@@ -31,12 +36,22 @@ if [ "$NOTARIZE" = yes ]; then
         set -- --keychain-profile "$NOTARY_PROFILE"
     elif [ -n "${APPLE_API_KEY:-}" ] && [ -n "${APPLE_API_KEY_ID:-}" ] && [ -n "${APPLE_API_ISSUER:-}" ]; then
         set -- --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER"
+    elif [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]; then
+        # The team is the one named in brackets at the end of the identity.
+        TEAM=${APPLE_TEAM_ID:-$(printf '%s' "$IDENTITY" | sed -n 's/.*(\([A-Z0-9]*\))$/\1/p')}
+        set -- --apple-id "$APPLE_ID" --team-id "$TEAM" --password "$APPLE_APP_SPECIFIC_PASSWORD"
     else
         echo "No notary credentials. Set NOTARY_PROFILE, or APPLE_API_KEY, APPLE_API_KEY_ID" >&2
-        echo "and APPLE_API_ISSUER. To stop after signing, pass --skip-notarize." >&2
+        echo "and APPLE_API_ISSUER, or APPLE_ID and APPLE_APP_SPECIFIC_PASSWORD." >&2
+        echo "To stop after signing, pass --skip-notarize." >&2
         exit 2
     fi
-    # Checked before the long build, so a missing credential fails at once.
+    # Checked with Apple before the long build, so a missing or mistyped
+    # credential fails at once and not after ten minutes.
+    if ! xcrun notarytool history "$@" >/dev/null 2>&1; then
+        echo "Apple did not accept the notary credentials." >&2
+        exit 2
+    fi
 fi
 
 # The universal build: Apple silicon and Intel.

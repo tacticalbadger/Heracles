@@ -92,8 +92,7 @@ npx electron-builder install-app-deps
 ## Building the native Mac app (in progress)
 
 The Swift + Rust rewrite lives beside the Electron app and builds separately.
-Version 0.2.1 is its first preview release, and the code here is ahead of it.
-For what works and what has not been checked, see the status section of
+Version 0.3.0 is its current preview release. For what works and what has not been checked, see the status section of
 [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
 
 You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`
@@ -164,11 +163,20 @@ export APPLE_API_ISSUER=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 macos/release.sh
 ```
 
-Or save them once with `xcrun notarytool store-credentials heracles --key …
---key-id … --issuer …` and run `NOTARY_PROFILE=heracles macos/release.sh`.
+An Apple ID with an app-specific password, made at account.apple.com, works
+too:
 
-The script checks for credentials before it builds, so a missing one fails
-at once. Set `CODESIGN_IDENTITY` to sign with a different certificate.
+```bash
+export APPLE_ID=you@example.com
+export APPLE_APP_SPECIFIC_PASSWORD=xxxx-xxxx-xxxx-xxxx
+macos/release.sh
+```
+
+Or save either kind once with `xcrun notarytool store-credentials heracles`
+and run `NOTARY_PROFILE=heracles macos/release.sh`.
+
+The script checks the credentials with Apple before it builds, so a missing
+or mistyped one fails at once. Set `CODESIGN_IDENTITY` to sign with a different certificate.
 
 To publish a version:
 
@@ -190,9 +198,8 @@ Updates are not set up: there is no Sparkle feed yet, so a new version is
 installed by replacing the app.
 
 Version 0.2.1 was published signed and not notarized, because no notary
-credentials were at hand. Its download cannot be replaced, so a notarized
-build needs the next version number: set it, run `macos/release.sh` with the
-credentials, and publish that.
+credentials were at hand, and its download cannot be replaced. Builds from
+0.3.0 on are notarized.
 
 ### Trying it without touching your library
 

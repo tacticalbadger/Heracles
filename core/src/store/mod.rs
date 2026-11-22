@@ -9,6 +9,7 @@ mod schema;
 mod search;
 mod tasks;
 
+pub(crate) use images::{image_hash, percent_decode};
 pub(crate) use tasks::string_list;
 
 use crate::changes::{Change, ChangeObserver};

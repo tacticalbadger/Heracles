@@ -39,6 +39,21 @@ impl Store {
         self.save_document(note_id, content, origin.as_deref())
     }
 
+    /// Create a page from a Markdown or HTML file. The page is named for the
+    /// file, and images the file refers to beside it are brought into the
+    /// image store. With no parent it goes in the first notebook.
+    #[uniffi::method(name = "import_file")]
+    pub fn ffi_import_file(&self, path: &str, parent_id: Option<String>) -> Result<Note> {
+        self.import_file(path, parent_id.as_deref())
+    }
+
+    /// Write a note's content to `destination` as Markdown. Its images are
+    /// copied into a folder beside the file and linked from there.
+    #[uniffi::method(name = "export_markdown")]
+    pub fn ffi_export_markdown(&self, note_id: &str, destination: &str) -> Result<()> {
+        self.export_markdown(note_id, destination)
+    }
+
     /// Every kind of move: reorder within a column or parent, change column,
     /// promote a subtask to a card, or put a task under another. Give a
     /// parent for a subtask, otherwise a column. `before_id` is the sibling

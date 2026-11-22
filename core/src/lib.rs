@@ -13,8 +13,10 @@ mod ffi;
 mod legacy;
 pub mod model;
 pub mod store;
+mod transfer;
 
 pub use changes::{Change, ChangeObserver};
 pub use error::{CoreError, Result};
 pub use model::*;
 pub use store::Store;
+pub use transfer::html_to_document;

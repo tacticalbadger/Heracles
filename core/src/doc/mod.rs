@@ -10,6 +10,7 @@
 //! trip through an older core without losing nodes it does not know.
 
 pub mod html;
+pub mod markdown;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};

@@ -629,7 +629,7 @@ fn is_allowed_link(href: &str) -> bool {
 /// The scheme of a URL, lowercased, or `None` for a relative URL. Browsers
 /// ignore whitespace and control characters inside a scheme, so
 /// `java\nscript:` is read as `javascript:` here too.
-fn url_scheme(url: &str) -> Option<String> {
+pub(crate) fn url_scheme(url: &str) -> Option<String> {
     let cleaned: String = url.chars().filter(|ch| *ch > ' ' && *ch != '\u{7f}').collect();
     let (scheme, _) = cleaned.split_once(':')?;
     let mut chars = scheme.chars();

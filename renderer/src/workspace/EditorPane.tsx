@@ -804,10 +804,11 @@ export const EditorPane = ({
     const info = getBlockInfo(editor);
     if (!info) return;
 
-    const json = info.node.toJSON();
-    if (json.attrs && 'blockId' in json.attrs) {
-      json.attrs.blockId = null;
-    }
+    // `toJSON` returns the node's own attrs object. Clearing blockId on it
+    // would strip the id from the original block and break links to it, so
+    // the copy gets its own attrs.
+    const source = info.node.toJSON();
+    const json = { ...source, attrs: { ...source.attrs, blockId: null } };
 
     editor.chain().focus().insertContentAt(info.pos + info.node.nodeSize, json).run();
     setBlockMenuOpen(false);

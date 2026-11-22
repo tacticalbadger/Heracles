@@ -214,12 +214,14 @@ foreign keys. It writes a backup first, as the notebook migration does today.
 
 ## Rewrite status
 
-Updated 2026-11-21. Work is on the `native-rewrite` branch. The Electron app
-is unchanged and is still the release.
+Updated 2026-11-22. Work is on the `native-rewrite` branch. Version 0.2.0 of
+the native app is published as a preview on the GitHub releases page, signed
+and not notarized. The Electron app is unchanged and is still the one that
+updates itself.
 
 ### Built
 
-**The core** (`core/`, Rust, 165 tests via `cargo test`):
+**The core** (`core/`, Rust, 195 tests via `cargo test`):
 
 - SQLite schema with foreign keys, `ON DELETE CASCADE`, WAL, and one write
   transaction per user action. `CHECK` constraints hold the invariants:
@@ -227,9 +229,12 @@ is unchanged and is still the release.
   a column or under a parent.
 - Documents as block JSON in ProseMirror's shape, kept apart from the note
   row. Unknown node types and attributes survive a round trip.
-- HTML to document conversion, used for migrating stored notes and for
-  importing HTML. Output is built from an allow-list, so nothing from the
+- HTML to document conversion, used for migrating stored notes, importing
+  HTML, and pasting. Output is built from an allow-list, so nothing from the
   input is copied through.
+- Markdown to document and document to Markdown.
+- File import (Markdown or HTML, with the pictures beside the file) and
+  Markdown export (with pictures copied into a folder beside the file).
 - Content-addressed image store. Saving a document moves any embedded
   `data:` image into it.
 - FTS5 search over titles and text, with prefix matching and snippets.
@@ -239,18 +244,27 @@ is unchanged and is still the release.
   repair.
 - UniFFI bindings for Swift.
 
-**The app** (`macos/`, Swift, 32 tests via `swift test`, plus `--self-test`):
+**The app** (`macos/`, Swift, 61 tests via `swift test`, plus `--self-test`):
 
 - Sidebar with notebooks, nested notes, favorites, archive, trash, and search.
-- Kanban board with drag between columns.
+- Panes and tabs: splits within splits, draggable dividers, tabs that move
+  between panes, ⌘-click to open beside. The layout is kept per window.
 - The existing TipTap editor in a web view (option B), loading and saving
-  block JSON through the core.
+  block JSON through the core, with the block handle (drag to reorder or make
+  columns, add, block menu) and the selection toolbar.
+- Kanban board with drag between columns, and a task detail sheet: notes,
+  priority, dates, location, labels, reminders, nested subtasks, comments.
+- Reminders scheduled through `UNUserNotificationCenter`.
+- Import of Markdown and HTML files, and Markdown export.
+- Quick Open (⌘K), icon picker, and a menu bar.
 - Multiple windows on one shared model.
-- `heracles://note/<id>` links, registered in `Info.plist`.
+- `heracles://note/<id>` links, with `#block=<id>` to scroll to a block.
+- `macos/release.sh`: universal build, Developer ID signing under the
+  hardened runtime, notarization, stapling.
 
 ### Open findings this removes
 
-Each is removed in the native code only. The Electron app still has them.
+Each is removed in the native code only, unless it says otherwise.
 
 | Finding | How |
 |---|---|
@@ -260,10 +274,15 @@ Each is removed in the native code only. The Electron app still has them.
 | 4. SQLite defaults | WAL, foreign keys, busy timeout, cascades in the schema. |
 | 5. Duplicate board is many calls | One transaction in the core. Tested. |
 | 6. Refetching all content | Listing notes never reads content. |
-| 9. `htmlToEditorHtml` filters nothing | The converter's output is allow-listed, and link and image URLs are checked by scheme. Tested with hostile input. The web editor still uses the old function for paste: see below. |
+| 9. `htmlToEditorHtml` filters nothing | Import and paste both go through the core's converter, whose output is allow-listed, with link and image URLs checked by scheme. Tested with hostile input. |
+| 10. Markdown import demotes images | Markdown images become image blocks, and local ones are brought into the image store. Tested. |
 | 11. Links cannot be opened | ⌘-click opens a link. |
 | 12. Root task with no column | Refused by the core and by a `CHECK` constraint. The importer gives such tasks a column. |
 | 13. No Content-Security-Policy | The editor page has one, and is served from its own URL scheme, not `file:`. |
+| 15. Entitlements | The native app has none. It runs under the hardened runtime with no exceptions, checked on a signed build. |
+
+Found while porting, and fixed in both apps: duplicating a block took the
+id away from the original block, which broke links to it.
 
 ### Choices made that the plan left open
 
@@ -278,8 +297,12 @@ These were made to keep moving. Each is easy to change now and harder later.
 - **The library lives in the Electron app's folder** as `heracles.db`, beside
   `heracles.sqlite`, with images in `images/` and import backups in
   `backups/`.
-- **SwiftPM builds the app**, and a script assembles the bundle. The plan's
-  `xcodebuild archive` flow is not set up.
+- **SwiftPM builds the app**, and scripts assemble and sign the bundle. The
+  plan's `xcodebuild archive` flow is not used.
+- **The release is a zip.** There is no DMG yet.
+- **Export writes the note's content, not its title.** The file name carries
+  the title, as it does on import, so an export imports back as it was.
+- **A new note goes inside the open note**, as in the Electron app.
 - **Archive still does not cascade**, as in the Electron app. The roadmap
   question is undecided.
 - **Windows is undecided.** Nothing here blocks sharing the core with a
@@ -287,28 +310,31 @@ These were made to keep moving. Each is easy to change now and harder later.
 
 ### Not built yet
 
-- Pane splits and tabs. A window shows one note.
-- The editor's block gutter: drag handle, block menu, and dragging blocks into
-  columns. The slash menu and all block types work.
-- The task detail view: subtasks, comments, due dates, labels, and reminders
-  can be stored and are shown on cards, but only title and completion can be
-  edited.
-- Reminders through `UNUserNotificationCenter`. The core lists outstanding
-  reminders (`list_reminders`). Nothing schedules them.
-- Markdown import, HTML import from the menu, and export. The core converts
-  HTML. Nothing calls it for import yet, and Markdown is not started.
-- Icon picker, the ⌘K switcher, and menu bar commands.
-- Release signing, notarization, and Sparkle.
-- Paste in the web editor still goes through `htmlToEditorHtml` and TipTap's
-  schema, as in the Electron app. Routing paste through the core's converter
-  would close finding 9 there too.
+- Sparkle updates. A new version is installed by replacing the app.
+- A native block editor (option A). The editor is the web one.
+- Code blocks still highlight as JavaScript only, as in the Electron app.
+- Per-section sort modes in the sidebar, and dragging notes in the sidebar
+  to reorder them. Notes move through the "Move to Notebook" menu.
+- Moving a subtask under a different task. A subtask can be promoted to a
+  card.
+- HTML export.
 
 ### Not verified
 
+- **Notarization has not been run, and 0.2.0 was published without it.** The
+  script was run as far as signing: the build is signed with the Developer ID
+  certificate, has the hardened runtime, a secure timestamp and no
+  entitlements, and passes its self-test in that state. No notary credentials
+  were available where it was built, so the submit and staple steps have
+  never run. Until they do, macOS refuses to open a downloaded copy the first
+  time, and it has to be allowed under System Settings → Privacy & Security.
 - The importer has only been run on databases built by its tests. No real
   Electron library was on the machine it was written on. Try it first with
   `HERACLES_DATA_DIR` pointing at a copy.
-- The app's windows were checked by drawing them offscreen
-  (`--snapshot`) and by `--self-test`. Nobody has used it by hand yet.
+- The app's windows were checked by drawing them offscreen (`--snapshot`)
+  and by `--self-test`, which runs the real editor in a web view. Nobody has
+  used it by hand yet. In particular, these are built and not exercised:
+  dragging blocks, tabs, dividers and cards; reminders arriving; ⌘-click on
+  links; the open and save panels.
 - Findings marked **read** above were not reproduced in the Electron app
   before being designed out.

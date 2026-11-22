@@ -154,6 +154,8 @@ renderer/src/
 │   └── IconPicker.tsx     Emoji icon picker
 └── styles.css             All renderer styles
 renderer/editor-host/      The same editor as one page, for the native app's web view
+├── main.tsx               Editor, paste and drop handling, bridge to the app
+└── BlockTools.tsx         Block handle, block menu, drop line
 
 core/                      heracles-core: the native app's data layer (Rust)
 ├── src/doc/               Block document model, HTML → document conversion
@@ -164,13 +166,16 @@ core/                      heracles-core: the native app's data layer (Rust)
 macos/                     The native Mac app (Swift)
 ├── build-app.sh           Builds build/Heracles.app
 ├── build-core.sh          Builds the core and its Swift bindings
+├── release.sh             Signs, notarizes and staples a build to distribute
 ├── Sources/HeraclesCore/  Generated bindings to the core
 ├── Sources/HeraclesApp/   Model, sidebar, board, editor web view
 └── Tests/                 Binding tests and app model tests
 tools/bindgen/             UniFFI's Swift bindings generator, version-pinned
 ```
 
-The native app is a rewrite in progress. The Electron app is still what ships.
+The native app is a rewrite in progress. Its first preview, 0.2.0, is on the
+[releases page](https://github.com/tacticalbadger/Heracles/releases). The
+Electron app is still the one that updates itself.
 
 ## Data storage
 

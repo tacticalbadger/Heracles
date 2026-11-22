@@ -9,26 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Native Mac app, first stage** — the start of the Swift + Rust rewrite
-  planned in [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
-  It lives beside the Electron app, which is unchanged and still the release.
-  - `core/` is **heracles-core**, a Rust library that owns the data: a SQLite
-    schema with foreign keys and WAL, one write transaction per user action,
-    documents stored as block JSON in ProseMirror's shape, images in a
-    content-addressed store outside note content, FTS5 search, and a change
-    feed that tells every window what each write touched.
-  - A one-time importer brings the Electron library (`heracles.sqlite`)
-    across: it backs the old database up first, only reads it, converts each
-    note's HTML to block JSON, moves base64 images into the image store, and
-    repairs what the old schema allowed and the new one does not (orphaned
-    notes, cards in no column), reporting every repair.
-  - `macos/` is the app: a SwiftUI shell (sidebar, search, kanban board,
-    multiple windows) over the core through UniFFI bindings, with the existing
-    TipTap editor hosted in a web view (`renderer/editor-host/`) until a
-    native block editor replaces it.
-  - Build with `macos/build-app.sh`. See
-    [`BUILDING.md`](./BUILDING.md#building-the-native-mac-app-in-progress).
-
 - **`npm run release:upload`** — uploads a built release (installer, zip,
   blockmaps, and the `latest-*.yml` update feed) to the Cloudflare R2 bucket
   that serves auto-updates, replacing the manual dashboard/AWS-CLI step. Signs
@@ -96,6 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Duplicating a block changed the original block's id**, which broke any
+  link to that block. The copy was made by clearing the id on attributes it
+  shared with the original. Fixed in the Electron editor and the native one.
 - **Typing is no longer reverted by metadata updates.** Toggling favorite,
   archiving, changing a page's icon, or any sidebar refresh while an autosave
   was still pending (the 600 ms debounce) replaced the in-memory note with the
@@ -181,6 +164,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New IPC: `notes.importMarkdown()` and `notes.importHtml()` open native
   multi-select file dialogs and return file names + contents.
 
+## [0.2.0] - 2026-11-22
+
+The first preview of the native Mac app. This version number belongs to the
+native app only: the Electron app is still 0.1.0, and its changes since then
+are under Unreleased above.
+
+The download is `Heracles-0.2.0-mac.zip` on the
+[release page](https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.0):
+a universal app for macOS 14 or later. It is signed with the Developer ID
+certificate and **not notarized**, so macOS refuses to open it the first time;
+allow it under System Settings → Privacy & Security → Open Anyway. It does not
+update itself.
+
+### Added
+
+- **Native Mac app, first stage** — the start of the Swift + Rust rewrite
+  planned in [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
+  It lives beside the Electron app, which is unchanged.
+  - `core/` is **heracles-core**, a Rust library that owns the data: a SQLite
+    schema with foreign keys and WAL, one write transaction per user action,
+    documents stored as block JSON in ProseMirror's shape, images in a
+    content-addressed store outside note content, FTS5 search, and a change
+    feed that tells every window what each write touched.
+  - A one-time importer brings the Electron library (`heracles.sqlite`)
+    across: it backs the old database up first, only reads it, converts each
+    note's HTML to block JSON, moves base64 images into the image store, and
+    repairs what the old schema allowed and the new one does not (orphaned
+    notes, cards in no column), reporting every repair.
+  - `macos/` is the app: a SwiftUI shell (sidebar, search, kanban board,
+    multiple windows) over the core through UniFFI bindings, with the existing
+    TipTap editor hosted in a web view (`renderer/editor-host/`) until a
+    native block editor replaces it.
+  - Build with `macos/build-app.sh`. See
+    [`BUILDING.md`](./BUILDING.md#building-the-native-mac-app-in-progress).
+- **Native Mac app, second stage** — the pieces the first stage left out:
+  - **Panes and tabs.** Split a window right or down, as deep as you like,
+    drag the dividers, drag tabs between panes, and ⌘-click a note in the
+    sidebar to open it beside the current one. Each window remembers its
+    layout.
+  - **Block handle in the editor.** Hover a block for its handle: drag to
+    reorder or to make columns, + to add a block, ⋮⋮ for a menu with copy
+    link, duplicate, delete and "turn into". Selecting text shows the
+    formatting toolbar.
+  - **Task details.** Click a card for its notes, priority, due date,
+    deadline, location, labels, reminders, nested subtasks and comments.
+  - **Reminders** are scheduled as system notifications, so they arrive
+    whether or not the app is open. Clicking one opens its todo list.
+  - **Import and export.** Import Markdown and HTML files as pages, with the
+    pictures beside them brought into the image store. Markdown images are
+    now image blocks, not links. Export a note as Markdown, with its pictures
+    copied into a folder beside the file.
+  - **Quick Open (⌘K)**, an icon picker, and a menu bar with shortcuts.
+  - **Links to blocks.** "Copy link to block" gives a `heracles://` link that
+    opens the note and scrolls to the block.
+  - **Paste goes through the core.** Rich text pasted into the editor is
+    converted by the same allow-list as an import.
+  - **`macos/release.sh`** builds a universal app, signs it with the
+    Developer ID certificate under the hardened runtime with no exceptions,
+    notarizes it and staples the ticket.
+
 ## [0.1.0]
 
 ### Added
@@ -199,4 +242,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   boundary.
 
 [Unreleased]: https://github.com/
+[0.2.0]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.0
 [0.1.0]: https://github.com/

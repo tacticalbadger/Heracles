@@ -89,7 +89,8 @@ npx electron-builder install-app-deps
 ## Building the native Mac app (in progress)
 
 The Swift + Rust rewrite lives beside the Electron app and builds separately.
-It is not a release yet: see the status section of
+Version 0.2.0 is its first preview release. For what works and what has not
+been checked, see the status section of
 [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
 
 You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`
@@ -111,8 +112,8 @@ The script runs three steps, which you can also run one at a time:
 All three outputs are git-ignored. After changing Rust code, run
 `macos/build-core.sh` again before building or testing the Swift package.
 
-The app is signed ad hoc, which runs on the Mac that built it. Release
-signing, notarization, and Sparkle updates are not set up yet.
+`build-app.sh` signs the app ad hoc, which runs on the Mac that built it. For
+a build to give to someone else, see [Releasing](#releasing-the-native-app).
 
 ### Tests
 
@@ -128,6 +129,54 @@ edit reaches the core. It prints one line per check and exits 0 if all pass.
 
 `Heracles --snapshot <folder>` draws the app's window, filled with sample
 notes, into PNG files. It is a way to look at the interface from a script.
+
+### Releasing the native app
+
+```bash
+macos/release.sh                  # build, sign, notarize, staple
+macos/release.sh --skip-notarize  # stop after signing
+```
+
+This builds the universal app, signs it with the Developer ID certificate
+under the hardened runtime, runs the signed app's self-test, has Apple
+notarize it, and staples the ticket. The result is `build/Heracles.app` and
+`build/Heracles-<version>-mac.zip`.
+
+The app needs no hardened-runtime exceptions and has no entitlements file:
+the web editor's JavaScript runs in WebKit's own process, and the Rust core is
+linked into the executable.
+
+Notarizing needs the same credentials as the Electron release:
+
+```bash
+export APPLE_API_KEY=/path/to/AuthKey_XXXXXXXXXX.p8
+export APPLE_API_KEY_ID=XXXXXXXXXX
+export APPLE_API_ISSUER=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+macos/release.sh
+```
+
+Or save them once with `xcrun notarytool store-credentials heracles --key …
+--key-id … --issuer …` and run `NOTARY_PROFILE=heracles macos/release.sh`.
+
+The script checks for credentials before it builds, so a missing one fails
+at once. Set `CODESIGN_IDENTITY` to sign with a different certificate.
+
+To publish a version:
+
+1. Set `CFBundleShortVersionString` in `macos/Info.plist` and add a section
+   for the version to `CHANGELOG.md`. The native app has its own version
+   number. `package.json` is the Electron app's.
+2. Run `macos/release.sh`.
+3. Tag the commit `v<version>`, push the tag, and attach
+   `build/Heracles-<version>-mac.zip` to a GitHub release for that tag.
+
+Updates are not set up: there is no Sparkle feed yet, so a new version is
+installed by replacing the app.
+
+Version 0.2.0 was published signed and not notarized, because no notary
+credentials were at hand. To replace its download with a notarized one, run
+`macos/release.sh` with the credentials and upload the new zip to the same
+release.
 
 ### Trying it without touching your library
 

@@ -10,7 +10,7 @@ The native app is a preview. The latest build is on the [releases page](https://
 
 - The build is signed with a Developer ID certificate and is not notarized, so macOS refuses to open it the first time. Allow it under System Settings → Privacy & Security → Open Anyway.
 - It does not update itself yet. To install a newer version, replace the app.
-- The note editor is still the web editor from the Electron app, shown in a web view. A native editor is being built to replace it.
+- The published preview, 0.2.1, still has the web editor from the Electron app inside it. The native editor described below is in this repository and will be in the next release.
 - The first time it starts, it copies an existing Electron library into its own database. See [Data storage](#data-storage).
 
 What is built, what is missing and what has not been checked is recorded in the [rewrite status](./docs/review-and-native-rewrite.md#rewrite-status).
@@ -19,7 +19,9 @@ What is built, what is missing and what has not been checked is recorded in the 
 
 - **Notebooks, sections and pages** in a sidebar, nested as deep as you like, with favorites, archive and trash. Trashing, restoring and deleting apply to a page and everything under it.
 - **Panes and tabs.** Split a window right or down, drag the dividers, and drag tabs between panes. Each window remembers its layout, and any number of windows can be open on the same library.
-- **Block editor.** Headings, lists, task lists, quotes, callouts, toggles, code blocks, images and column layouts. Each block has a handle to drag it, duplicate it, turn it into another kind of block, or copy a link to it.
+- **Block editor.** Headings, lists, task lists, quotes, callouts, toggles, code blocks, images and column layouts. Each block's text is a system text view, so typing, selection, spelling and dictation work as they do across the Mac.
+- **Markdown as you type**, a slash menu of blocks, and a Format menu with the usual shortcuts.
+- **Blocks you can pick up.** Each block has a handle to drag it, make columns with it, duplicate it, turn it into another kind of block, or copy a link to it. Whole blocks can be selected, copied and moved together.
 - **Kanban boards.** A todo list is a board with your own columns. Cards carry notes, priority, a due date, a deadline, labels, a location, reminders, comments and subtasks nested to any depth.
 - **Reminders** arrive as system notifications, whether or not the app is open.
 - **Search** across every note's title and text.
@@ -35,14 +37,14 @@ What is built, what is missing and what has not been checked is recorded in the 
 | Core | Rust (`heracles-core`): storage, documents, search, import and export |
 | Bridge | UniFFI, which generates the Swift bindings to the core |
 | Storage | SQLite with full-text search, bundled into the core |
-| Editor | TipTap in a web view, until the native editor replaces it |
+| Editor | Native: a document model in Swift, shown as one system text view (TextKit 2) per block |
 | Build | Cargo and Swift Package Manager, run by the scripts in `macos/` |
 
 The core owns the data. Every window reads from it and subscribes to its change feed, which is what keeps two windows showing the same note in step. Documents are stored as blocks in JSON, and pictures are stored once each, outside the notes that use them.
 
 ## Building
 
-You need Rust (through [rustup](https://rustup.rs), with the `aarch64-apple-darwin` and `x86_64-apple-darwin` targets), Xcode and Node.js.
+You need Rust (through [rustup](https://rustup.rs), with the `aarch64-apple-darwin` and `x86_64-apple-darwin` targets) and Xcode.
 
 ```bash
 macos/build-app.sh              # universal build → build/Heracles.app
@@ -53,7 +55,7 @@ To run the tests:
 
 ```bash
 cargo test                           # the core
-swift test --package-path macos      # the bindings and the app's model
+swift test --package-path macos      # the bindings, the app's model and the editor
 build/Heracles.app/Contents/MacOS/Heracles --self-test
 ```
 
@@ -74,11 +76,11 @@ macos/                     The Mac app (Swift)
 ├── build-core.sh          Builds the core and its Swift bindings
 ├── release.sh             Signs, notarizes and staples a build to distribute
 ├── Sources/HeraclesCore/  Generated bindings to the core
-├── Sources/HeraclesApp/   Model, sidebar, panes, board, editor web view
-└── Tests/                 Binding tests and app model tests
+├── Sources/HeraclesApp/   Model, sidebar, panes, board
+│   └── Editor/            The block editor: document model, text views, page
+└── Tests/                 Binding, app model and editor tests
 tools/bindgen/             UniFFI's Swift bindings generator, version-pinned
-renderer/editor-host/      The web editor as one page, for the app's web view
-electron/, renderer/src/   The Electron app (see docs/electron.md)
+electron/, renderer/       The Electron app (see docs/electron.md)
 ```
 
 ## Data storage

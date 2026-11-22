@@ -92,27 +92,27 @@ npx electron-builder install-app-deps
 ## Building the native Mac app (in progress)
 
 The Swift + Rust rewrite lives beside the Electron app and builds separately.
-Version 0.2.1 is its first preview release. For what works and what has not
-been checked, see the status section of
+Version 0.2.1 is its first preview release, and the code here is ahead of it.
+For what works and what has not been checked, see the status section of
 [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
 
 You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`
-and `x86_64-apple-darwin` targets), Xcode, and Node.js.
+and `x86_64-apple-darwin` targets) and Xcode. Node.js is only needed for the
+Electron app.
 
 ```bash
 macos/build-app.sh              # universal build → build/Heracles.app
 macos/build-app.sh --host-only  # this Mac's processor only, faster
 ```
 
-The script runs three steps, which you can also run one at a time:
+The script runs two steps, which you can also run one at a time:
 
 | Step | Command | Produces |
 | --- | --- | --- |
-| Web editor | `npm run build:editor` | `macos/Sources/HeraclesApp/Resources/editor/` |
 | Rust core | `macos/build-core.sh` | `macos/Frameworks/HeraclesCoreFFI.xcframework` and the Swift bindings in `macos/Sources/HeraclesCore/Generated/` |
 | App | `swift build --package-path macos` | the `Heracles` executable |
 
-All three outputs are git-ignored. After changing Rust code, run
+Both outputs are git-ignored. After changing Rust code, run
 `macos/build-core.sh` again before building or testing the Swift package.
 
 `build-app.sh` signs the app ad hoc, which runs on the Mac that built it. For
@@ -122,16 +122,22 @@ a build to give to someone else, see [Releasing](#releasing-the-native-app).
 
 ```bash
 cargo test                           # the core: storage, documents, search, import
-swift test --package-path macos      # the bindings and the app's model
+swift test --package-path macos      # the bindings, the app's model, the editor
 build/Heracles.app/Contents/MacOS/Heracles --self-test
 ```
 
-`--self-test` runs the bundled web editor in a real web view against a
-throwaway library: it loads a document, types into it, and checks that the
-edit reaches the core. It prints one line per check and exits 0 if all pass.
+The editor's tests drive the real text views in a window that is never
+shown: they type, press Return and Backspace, move with the arrow keys, and
+paste, and check what the document holds afterwards.
 
-`Heracles --snapshot <folder>` draws the app's window, filled with sample
-notes, into PNG files. It is a way to look at the interface from a script.
+`--self-test` does the same in the built app against a throwaway library: it
+opens a note, types into it, and checks that the edit reaches the core, is
+searchable, and survives a save from elsewhere. It prints one line per check
+and exits 0 if all pass.
+
+`Heracles --snapshot <folder>` draws the app's window and the editor, filled
+with a sample note that has one of every kind of block, into PNG files. It is
+a way to look at the interface from a script.
 
 ### Releasing the native app
 
@@ -145,9 +151,9 @@ under the hardened runtime, runs the signed app's self-test, has Apple
 notarize it, and staples the ticket. The result is `build/Heracles.app` and
 `build/Heracles-<version>-mac.zip`.
 
-The app needs no hardened-runtime exceptions and has no entitlements file:
-the web editor's JavaScript runs in WebKit's own process, and the Rust core is
-linked into the executable.
+The app needs no hardened-runtime exceptions and has no entitlements file.
+It is one executable with the Rust core linked into it, and it runs no
+JavaScript.
 
 Notarizing needs the same credentials as the Electron release:
 

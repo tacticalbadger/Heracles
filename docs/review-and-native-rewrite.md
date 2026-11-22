@@ -214,10 +214,10 @@ foreign keys. It writes a backup first, as the notebook migration does today.
 
 ## Rewrite status
 
-Updated 2026-11-22. Work is on the `native-rewrite` branch. Version 0.2.1 of
-the native app is published as a preview on the GitHub releases page, signed
-and not notarized. The Electron app is unchanged and is still the one that
-updates itself.
+Updated 2026-11-22. Version 0.2.1 of the native app is published as a
+preview on the GitHub releases page, signed and not notarized. The native
+editor (option A) was built after it and is not in a release yet. The
+Electron app is unchanged and is still the one that updates itself.
 
 ### Built
 
@@ -244,19 +244,20 @@ updates itself.
   repair.
 - UniFFI bindings for Swift.
 
-**The app** (`macos/`, Swift, 61 tests via `swift test`, plus `--self-test`):
+**The app** (`macos/`, Swift, 246 tests via `swift test`, plus `--self-test`):
 
 - Sidebar with notebooks, nested notes, favorites, archive, trash, and search.
 - Panes and tabs: splits within splits, draggable dividers, tabs that move
   between panes, ⌘-click to open beside. The layout is kept per window.
-- The existing TipTap editor in a web view (option B), loading and saving
-  block JSON through the core, with the block handle (drag to reorder or make
-  columns, add, block menu) and the selection toolbar.
+- A native block editor (option A), which replaced the TipTap editor in a
+  web view that the first two stages used (option B). It reads and writes
+  the same block JSON, so notes carry over unchanged. See
+  [The native editor](#the-native-editor) below.
 - Kanban board with drag between columns, and a task detail sheet: notes,
   priority, dates, location, labels, reminders, nested subtasks, comments.
 - Reminders scheduled through `UNUserNotificationCenter`.
 - Import of Markdown and HTML files, and Markdown export.
-- Quick Open (⌘K), icon picker, and a menu bar.
+- Quick Open (⌘K), icon picker, and a menu bar with a Format menu.
 - Multiple windows on one shared model.
 - `heracles://note/<id>` links, with `#block=<id>` to scroll to a block.
 - `macos/release.sh`: universal build, Developer ID signing under the
@@ -276,13 +277,50 @@ Each is removed in the native code only, unless it says otherwise.
 | 6. Refetching all content | Listing notes never reads content. |
 | 9. `htmlToEditorHtml` filters nothing | Import and paste both go through the core's converter, whose output is allow-listed, with link and image URLs checked by scheme. Tested with hostile input. |
 | 10. Markdown import demotes images | Markdown images become image blocks, and local ones are brought into the image store. Tested. |
-| 11. Links cannot be opened | ⌘-click opens a link. |
+| 11. Links cannot be opened | A click opens a link, as in other Mac text. Only web, mail and note links are followed. |
 | 12. Root task with no column | Refused by the core and by a `CHECK` constraint. The importer gives such tasks a column. |
-| 13. No Content-Security-Policy | The editor page has one, and is served from its own URL scheme, not `file:`. |
+| 13. No Content-Security-Policy | There is no web page left to need one. The app runs no JavaScript and does not load WebKit. |
 | 15. Entitlements | The native app has none. It runs under the hardened runtime with no exceptions, checked on a signed build. |
 
 Found while porting, and fixed in both apps: duplicating a block took the
 id away from the original block, which broke links to it.
+
+### The native editor
+
+The plan called this the hard part. It is in
+`macos/Sources/HeraclesApp/Editor/`, in three layers:
+
+- **A document model in plain Swift.** A note is a tree of blocks. A list
+  item is a block with its text on it and what is nested in it as its
+  children, which is the shape an editor wants, and it is converted to and
+  from the stored JSON's lists-of-items shape on the way in and out. Every
+  edit that changes the shape of a note (split, join, indent, move, make
+  columns, paste) is a function on this model, with no view involved, and
+  each is tested on its own.
+- **One system text view per block** (`NSTextView` on TextKit 2). Typing
+  inside a block is the text view's own business, which is where the native
+  behaviour comes from. What crosses blocks (Return, Backspace at the start,
+  arrows at an edge) is passed to the editor, which changes the model and
+  then makes the views match.
+- **The page**, which stacks the block views, and draws what floats over
+  them: the block handle, the selection of whole blocks, the drop line and
+  the slash menu.
+
+Choices made in it:
+
+- **A selection is either text inside one block, or whole blocks.** A drag
+  from one block into another selects whole blocks, as in other block
+  editors. Text cannot be selected from the middle of one block to the
+  middle of another.
+- **Undo is the editor's own**, one history for the note, kept as snapshots
+  of the document. A run of typing in one block is one step.
+- **A click on a link opens it.** The web editor wanted ⌘-click.
+- **Only `http`, `https`, `mailto` and `heracles` links can be made or
+  followed.**
+- **Remote pictures are still fetched** when a note that refers to one is
+  opened, as the web editor did.
+- **No floating toolbar over a selection.** The Format menu, its shortcuts
+  and the context menu replace it.
 
 ### Choices made that the plan left open
 
@@ -311,8 +349,13 @@ These were made to keep moving. Each is easy to change now and harder later.
 ### Not built yet
 
 - Sparkle updates. A new version is installed by replacing the app.
-- A native block editor (option A). The editor is the web one.
-- Code blocks still highlight as JavaScript only, as in the Electron app.
+- Syntax coloring in code blocks. They are plain monospaced text with a
+  language menu. The Electron app colors them as JavaScript whatever the
+  language.
+- Find within a note. Search finds notes, not places in them.
+- Selecting text across blocks, and dragging out a rectangle to select
+  blocks.
+- Resizing an image. It is shown at its own size, or as wide as the text.
 - Per-section sort modes in the sidebar, and dragging notes in the sidebar
   to reorder them. Notes move through the "Move to Notebook" menu.
 - Moving a subtask under a different task. A subtask can be promoted to a
@@ -331,10 +374,18 @@ These were made to keep moving. Each is easy to change now and harder later.
 - The importer has only been run on databases built by its tests. No real
   Electron library was on the machine it was written on. Try it first with
   `HERACLES_DATA_DIR` pointing at a copy.
-- The app's windows were checked by drawing them offscreen (`--snapshot`)
-  and by `--self-test`, which runs the real editor in a web view. Nobody has
-  used it by hand yet. In particular, these are built and not exercised:
-  dragging blocks, tabs, dividers and cards; reminders arriving; ⌘-click on
-  links; the open and save panels.
+- **Nobody has used the app by hand yet.** The windows were checked by
+  drawing them offscreen (`--snapshot`), in light and dark, and the editor by
+  tests that drive the real text views with keys and the clipboard, in
+  `swift test` and in `--self-test` on the built app. What those cannot do is
+  move a mouse. Built and never exercised: clicking and dragging in the
+  editor (placing the caret, dragging a selection across blocks, the block
+  handle, dragging a block to move it or make columns, column dividers,
+  dropping picture files), the link and icon popovers, input methods for
+  languages that compose characters, and the Edit menu's own Undo item, as
+  opposed to ⌘Z. Outside the editor: dragging tabs, dividers and cards,
+  reminders arriving, and the open and save panels.
+- The editor's tests for the views were written after the views. The
+  document model was written test first.
 - Findings marked **read** above were not reproduced in the Electron app
   before being designed out.

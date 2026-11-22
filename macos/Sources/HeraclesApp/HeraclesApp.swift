@@ -18,12 +18,21 @@ public enum DataDirectory {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Set by `HeraclesApp` once the library is open.
     static var model: AppModel?
+    private var reminders: ReminderScheduler?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Run from a bare executable, as `swift run` does, the process is not
         // a regular app until it says so.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+
+        // Reminders are scheduled with the system, so they arrive whether or
+        // not the app is running, and rescheduled whenever tasks change.
+        if let model = Self.model, let scheduler = ReminderScheduler(model: model) {
+            reminders = scheduler
+            model.afterChange = { [weak scheduler] in scheduler?.syncSoon() }
+            scheduler.syncSoon()
+        }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -60,8 +69,7 @@ public struct HeraclesApp: App {
     public var body: some Scene {
         WindowGroup("Heracles") {
             if let model {
-                RootView()
-                    .environment(model)
+                RootView(model: model)
                     .sheet(item: $importReport) { report in
                         ImportSummaryView(report: report)
                     }
@@ -72,6 +80,7 @@ public struct HeraclesApp: App {
             }
         }
         .defaultSize(width: 1200, height: 800)
+        .commands { HeraclesCommands() }
     }
 }
 

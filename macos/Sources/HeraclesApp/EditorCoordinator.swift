@@ -21,6 +21,9 @@ final class EditorCoordinator: NSObject {
     private var isReady = false
     private var wanted: (noteID: String, editable: Bool)?
     private var shown: (noteID: String, editable: Bool, revision: Int64)?
+    private var revealed: String?
+    /// Called when the editor takes the keyboard focus.
+    var onFocus: (() -> Void)?
 
     init(model: AppModel) {
         self.model = model
@@ -66,6 +69,21 @@ final class EditorCoordinator: NSObject {
             in: nil, in: .page, completionHandler: nil)
     }
 
+    /// Bring a block into view. Once per block: asking again for the same
+    /// one does nothing, so a view update cannot keep scrolling the page.
+    func reveal(_ blockID: String?, then done: @escaping () -> Void) {
+        guard let blockID, blockID != revealed, isReady, shown != nil else { return }
+        revealed = blockID
+        Task {
+            // The document was handed over a moment ago. Give it time to draw.
+            try? await Task.sleep(for: .milliseconds(150))
+            _ = try? await webView.callAsyncJavaScript(
+                "return window.heraclesEditor.scrollToBlock(blockId)", arguments: ["blockId": blockID],
+                contentWorld: .page)
+            done()
+        }
+    }
+
     /// Have the editor send any change it is holding back, and wait for it.
     func flush() async {
         guard isReady else { return }
@@ -96,6 +114,15 @@ final class EditorCoordinator: NSObject {
         case .storeImage(let mime, let base64):
             guard let bytes = Data(base64Encoded: base64, options: .ignoreUnknownCharacters) else { return nil }
             return model.attempt { try model.store.storeImage(bytes: bytes, mime: mime) }?.url
+        case .convertHTML(let html):
+            return htmlToDocument(html: html)
+        case .copyBlockLink(let blockID):
+            guard let noteID = shown?.noteID else { return nil }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(
+                AppLink(noteID: noteID, blockID: blockID).url.absoluteString, forType: .string)
+        case .focused:
+            onFocus?()
         }
         return nil
     }

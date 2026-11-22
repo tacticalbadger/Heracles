@@ -9,6 +9,11 @@ struct EditorWebView: NSViewRepresentable {
     /// `updateNSView` when another window saves it.
     let change: DocumentChange?
     let model: AppModel
+    /// A block to bring into view, when the note was opened by a link to it.
+    var reveal: String?
+    var onRevealed: () -> Void = {}
+    /// Called when the user clicks into this editor.
+    var onFocus: () -> Void = {}
 
     func makeCoordinator() -> EditorCoordinator {
         EditorCoordinator(model: model)
@@ -19,7 +24,9 @@ struct EditorWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: WKWebView, context: Context) {
+        context.coordinator.onFocus = onFocus
         context.coordinator.show(noteID: noteID, editable: editable, change: change)
+        context.coordinator.reveal(reveal, then: onRevealed)
     }
 
     static func dismantleNSView(_ view: WKWebView, coordinator: EditorCoordinator) {

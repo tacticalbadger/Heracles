@@ -77,6 +77,12 @@ public enum EditorMessage: Equatable, Sendable {
     case openLink(href: String)
     /// The user pasted or dropped an image. The reply is its URL in the store.
     case storeImage(mime: String, base64: String)
+    /// The user pasted rich text. The reply is document JSON.
+    case convertHTML(html: String)
+    /// The user chose "Copy link to block".
+    case copyBlockLink(blockID: String)
+    /// The editor took the keyboard focus.
+    case focused
 
     public init?(body: Any) {
         guard let body = body as? [String: Any], let type = body["type"] as? String else { return nil }
@@ -93,6 +99,14 @@ public enum EditorMessage: Equatable, Sendable {
         case "storeImage":
             guard let mime = text("mime"), let base64 = text("base64") else { return nil }
             self = .storeImage(mime: mime, base64: base64)
+        case "convertHtml":
+            guard let html = text("html") else { return nil }
+            self = .convertHTML(html: html)
+        case "copyBlockLink":
+            guard let blockID = text("blockId") else { return nil }
+            self = .copyBlockLink(blockID: blockID)
+        case "focused":
+            self = .focused
         default:
             return nil
         }

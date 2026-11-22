@@ -28,6 +28,9 @@ public final class AppModel {
 
     private var documentChanges: [String: DocumentChange] = [:]
     private var boardVersions: [String: Int] = [:]
+    /// Called after each batch of changes, for work that follows the data
+    /// without being shown: rescheduling reminders.
+    @ObservationIgnored var afterChange: (() -> Void)?
     @ObservationIgnored private var feed: FeedObserver?
     @ObservationIgnored private let editors = NSHashTable<EditorCoordinator>.weakObjects()
 
@@ -66,6 +69,7 @@ public final class AppModel {
         if notesChanged, let notes = try? store.listNotes() {
             library = Library(notes: notes)
         }
+        afterChange?()
     }
 
     /// The latest save of a note's content this session, if there was one.

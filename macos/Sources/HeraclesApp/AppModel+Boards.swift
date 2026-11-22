@@ -44,4 +44,30 @@ extension AppModel {
     public func deleteTask(_ taskID: String) {
         attempt { try store.deleteTask(id: taskID) }
     }
+
+    public func updateTask(_ taskID: String, _ patch: TaskPatch) {
+        attempt { try store.updateTask(id: taskID, patch: patch) }
+    }
+
+    public func addSubtask(to parent: TodoTask, titled title: String) {
+        attempt {
+            try store.createTask(new: NewTask(todoListId: parent.todoListId, parentTaskId: parent.id, title: title))
+        }
+    }
+
+    public func comments(on taskID: String) -> [TaskComment] {
+        (try? store.listComments(taskId: taskID)) ?? []
+    }
+
+    public func addComment(to taskID: String, _ body: String) {
+        attempt { try store.createComment(taskId: taskID, body: body) }
+    }
+
+    public func updateComment(_ commentID: String, _ body: String) {
+        attempt { try store.updateComment(id: commentID, body: body) }
+    }
+
+    public func deleteComment(_ commentID: String) {
+        attempt { try store.deleteComment(id: commentID) }
+    }
 }

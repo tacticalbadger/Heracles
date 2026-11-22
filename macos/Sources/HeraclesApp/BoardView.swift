@@ -9,6 +9,7 @@ struct BoardView: View {
     @State private var columns: [TaskColumn] = []
     @State private var tasks: [TodoTask] = []
     @State private var newColumn = ""
+    @State private var openTask: OpenTask?
 
     var body: some View {
         ScrollView(.horizontal) {
@@ -18,7 +19,8 @@ struct BoardView: View {
                         column: column,
                         cards: tasks.filter { $0.columnId == column.id },
                         subtaskCounts: subtaskCounts,
-                        canDelete: !todoList.trashed)
+                        canDelete: !todoList.trashed,
+                        open: { openTask = OpenTask(id: $0) })
                 }
                 if !todoList.trashed {
                     TextField("New column", text: $newColumn)
@@ -35,6 +37,10 @@ struct BoardView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .disabled(todoList.trashed)
+        .sheet(item: $openTask) { task in
+            TaskDetailView(todoListID: todoList.id, rootTaskID: task.id)
+                .environment(model)
+        }
         // Reloads on first showing, when another list is shown, and whenever
         // the change feed says this board changed, in any window.
         .task(id: BoardState(id: todoList.id, version: model.boardVersion(for: todoList.id))) {
@@ -55,6 +61,10 @@ struct BoardView: View {
     }
 }
 
+private struct OpenTask: Identifiable {
+    let id: String
+}
+
 private struct BoardState: Hashable {
     let id: String
     let version: Int
@@ -66,6 +76,7 @@ private struct BoardColumnView: View {
     let cards: [TodoTask]
     let subtaskCounts: [String: (done: Int, total: Int)]
     let canDelete: Bool
+    let open: (String) -> Void
     @State private var newCard = ""
     @State private var isTargeted = false
 
@@ -82,7 +93,8 @@ private struct BoardColumnView: View {
                 }
             }
             ForEach(cards, id: \.id) { card in
-                BoardCardView(card: card, subtasks: subtaskCounts[card.id])
+                BoardCardView(card: card, subtasks: subtaskCounts[card.id], open: { open(card.id) })
+                    .onTapGesture { open(card.id) }
                     .draggable(card.id)
                     .dropDestination(for: String.self) { ids, _ in
                         guard let id = ids.first, id != card.id else { return false }
@@ -117,6 +129,7 @@ private struct BoardCardView: View {
     @Environment(AppModel.self) private var model
     let card: TodoTask
     let subtasks: (done: Int, total: Int)?
+    let open: () -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -134,7 +147,7 @@ private struct BoardCardView: View {
                             Label("P\(card.priority)", systemImage: "flag.fill")
                         }
                         if let due = card.dueDate {
-                            Label(due, systemImage: "calendar")
+                            Label(TaskDates.label(for: due), systemImage: "calendar")
                         }
                         if let subtasks {
                             Label("\(subtasks.done)/\(subtasks.total)", systemImage: "checklist")
@@ -157,6 +170,7 @@ private struct BoardCardView: View {
         .background(.background, in: RoundedRectangle(cornerRadius: 8))
         .shadow(color: .black.opacity(0.08), radius: 1, y: 1)
         .contextMenu {
+            Button("Open") { open() }
             Button("Delete Card", role: .destructive) { model.deleteTask(card.id) }
         }
     }

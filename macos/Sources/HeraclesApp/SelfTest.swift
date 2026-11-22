@@ -90,6 +90,48 @@ public enum SelfTest {
                     .contains("Replaced elsewhere") == true
             }
             check("a save made elsewhere replaces what the editor shows", replaced)
+            // Pasted rich text is converted by the core, not by the page.
+            let converted = try await editor.evaluate(
+                "return await window.webkit.messageHandlers.heracles.postMessage({ type: 'convertHtml', html })",
+                arguments: ["html": "<h6 onclick=\"x()\">Deep</h6><p>kept</p><script>alert(1)</script>"]) as? String ?? ""
+            check(
+                "pasted HTML is converted by the core's rules",
+                converted.contains("\"level\":4") && converted.contains("kept")
+                    && !converted.contains("alert") && !converted.contains("onclick"))
+
+            // The block handle: point at a block, open its menu, duplicate it.
+            let duplicated = try await editor.evaluate(
+                """
+                const pause = () => new Promise((done) => setTimeout(done, 120));
+                const block = document.querySelector('.editor-content > *');
+                const rect = block.getBoundingClientRect();
+                document.querySelector('.editor-host').dispatchEvent(new MouseEvent('mousemove', {
+                  bubbles: true, clientX: rect.left + 6, clientY: rect.top + rect.height / 2
+                }));
+                await pause();
+                const menuButton = document.querySelector('.block-handle .block-handle__button--menu');
+                if (!menuButton) return 'no handle';
+                menuButton.click();
+                await pause();
+                const item = [...document.querySelectorAll('.block-menu__item')].find((i) => i.textContent === 'Duplicate');
+                if (!item) return 'no menu';
+                item.click();
+                await pause();
+                const blocks = JSON.parse(window.heraclesEditor.content()).content;
+                const ids = new Set(blocks.map((b) => b.attrs?.blockId));
+                return blocks.map((b) => b.content?.[0]?.text).join('|') + ' first:' + blocks[0].attrs?.blockId + ' ids:' + ids.size;
+                """) as? String ?? ""
+            // The original must keep its id, or links to it would break.
+            let expected = "Replaced elsewhere|Replaced elsewhere first:r1 ids:2"
+            check("the block handle's menu duplicates a block and leaves the original's id alone", duplicated == expected)
+            if duplicated != expected { print("  got: \(duplicated)") }
+
+            let found = try await editor.evaluate("return window.heraclesEditor.scrollToBlock('r1')") as? Bool
+            check("a block can be brought into view by its id", found == true)
+            if found != true {
+                let html = try await editor.evaluate("return document.querySelector('.editor-content').innerHTML.slice(0, 400)")
+                print("  editor HTML: \(html ?? "nil")")
+            }
             check("nothing went wrong along the way", model.lastError == nil)
         } catch {
             check("self-test ran to completion (\(error))", false)

@@ -20,11 +20,22 @@ public enum Snapshot {
             let model = try AppModel(store: store)
             let (page, list) = try fill(store)
             try FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+            let file = { (name: String) in URL(fileURLWithPath: folder).appendingPathComponent("\(name).png") }
             for (name, selected) in [("page", page), ("board", list)] {
-                let file = URL(fileURLWithPath: folder).appendingPathComponent("\(name).png")
-                try await draw(RootView(selecting: selected).environment(model), to: file)
-                print("Wrote \(file.path)")
+                try await draw(RootView(model: model, selecting: selected), to: file(name))
             }
+            // A todo list's first card, as the sheet that opens on it.
+            if let card = try store.listTasks(todoListId: list).first(where: { $0.parentTaskId == nil }) {
+                try await draw(TaskDetailView(todoListID: list, rootTaskID: card.id).environment(model), to: file("task"))
+            }
+            // Two panes side by side, and the quick switcher over them.
+            let workspace = Workspace(model: model)
+            workspace.open(page)
+            workspace.open(list, inSplit: .right)
+            try await draw(
+                PaneNodeView(node: workspace.tree.root, workspace: workspace).environment(model).frame(width: 1100, height: 700),
+                to: file("split"))
+            try await draw(SwitcherView(workspace: workspace).padding(40), to: file("switcher"))
             return true
         } catch {
             print("Snapshot failed: \(error)")
@@ -51,7 +62,12 @@ public enum Snapshot {
         let columns = try store.listColumns(todoListId: list.id)
         let ferry = try store.createTask(new: NewTask(todoListId: list.id, columnId: columns[0].id, title: "Book the ferry"))
         _ = try store.updateTask(
-            id: ferry.id, patch: TaskPatch(dueDate: .some("2026-12-01"), priority: 1, labels: ["travel"]))
+            id: ferry.id,
+            patch: TaskPatch(
+                description: "Check the winter timetable first.",
+                dueDate: .some("2026-12-01T14:00:00.000Z"), priority: 1, labels: ["travel", "tickets"],
+                reminders: ["2026-11-30T09:00:00.000Z"], location: .some("Harbour office")))
+        _ = try store.createComment(taskId: ferry.id, body: "The 9:40 sailing is the one with space for the car.")
         for (title, done) in [("Outbound", true), ("Return", false)] {
             let sub = try store.createTask(new: NewTask(todoListId: list.id, parentTaskId: ferry.id, title: title))
             _ = try store.updateTask(id: sub.id, patch: TaskPatch(completed: done))
@@ -64,6 +80,7 @@ public enum Snapshot {
     }
 
     private static func draw(_ view: some View, to file: URL) async throws {
+        defer { print("Wrote \(file.path)") }
         let frame = NSRect(x: 0, y: 0, width: 1100, height: 700)
         let window = NSWindow(
             contentRect: frame, styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)

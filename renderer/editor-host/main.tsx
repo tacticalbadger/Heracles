@@ -4,10 +4,9 @@
 // types, and nothing around it. The native side owns the document: it hands
 // one in with `load`, and every change is posted back to it as document JSON.
 // See macos/Sources/HeraclesApp/EditorWebView.swift for the other end.
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
-import { DOMParser as PMDOMParser } from 'prosemirror-model';
+import { BubbleMenu, EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
 import type { EditorView } from 'prosemirror-view';
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
@@ -18,11 +17,16 @@ import { CalloutBlock } from '../src/editor/CalloutBlock';
 import { CodeMirrorBlock } from '../src/editor/CodeMirrorBlock';
 import { Column } from '../src/editor/Column';
 import { ColumnBlock } from '../src/editor/ColumnBlock';
-import { ColumnsNormalizer } from '../src/editor/columnCommands';
+import {
+  BLOCK_DRAG_MIME,
+  ColumnsNormalizer,
+  applyBlockDrop,
+  getDropTarget
+} from '../src/editor/columnCommands';
 import { ImageBlock } from '../src/editor/ImageBlock';
 import SlashCommand from '../src/editor/SlashCommand';
 import { ToggleBlock } from '../src/editor/ToggleBlock';
-import { htmlToEditorHtml } from '../src/lib/htmlImport';
+import { BlockTools, dropMarkAt, type DropMark } from './BlockTools';
 import 'tippy.js/dist/tippy.css';
 import '../src/styles.css';
 import './host.css';
@@ -42,6 +46,8 @@ type HostApi = {
   content: () => string;
   /** Type text at the cursor, as the user would. */
   insertText: (text: string) => void;
+  /** Bring a block into view and mark it for a moment. */
+  scrollToBlock: (blockId: string) => boolean;
 };
 
 type NativeBridge = { postMessage: (message: unknown) => Promise<unknown> };
@@ -88,6 +94,20 @@ const insertImages = async (view: EditorView, files: File[], position: number) =
   if (sources.length > 0) view.dispatch(tr.scrollIntoView());
 };
 
+/**
+ * Insert pasted rich text. The app's core converts it to the editor's own
+ * nodes first, by the rules it uses for imports, so nothing but those nodes
+ * and safe links can come in through the clipboard.
+ */
+const insertConvertedHtml = async (editor: Editor, html: string) => {
+  const converted = await post({ type: 'convertHtml', html });
+  if (typeof converted !== 'string') return;
+  const blocks = (JSON.parse(converted) as JSONContent).content ?? [];
+  // One paragraph pastes into the line being typed, not as a new block.
+  const single = blocks.length === 1 && blocks[0].type === 'paragraph';
+  editor.commands.insertContent(single ? (blocks[0].content ?? []) : blocks);
+};
+
 const applyTheme = () => {
   const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -96,6 +116,10 @@ const applyTheme = () => {
 function HostEditor() {
   const noteId = useRef<string | null>(null);
   const saveTimer = useRef<number | null>(null);
+  const editorRef = useRef<Editor | null>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [dropMark, setDropMark] = useState<DropMark | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -118,6 +142,15 @@ function HostEditor() {
     editorProps: {
       attributes: { class: 'editor-content' },
       handleDrop: (view, event) => {
+        // A block dragged by its handle: move it, or make a column of it.
+        const dragged = (event as DragEvent).dataTransfer;
+        if (dragged?.types.includes(BLOCK_DRAG_MIME)) {
+          event.preventDefault();
+          setDropMark(null);
+          const source = Number(dragged.getData(BLOCK_DRAG_MIME));
+          const target = getDropTarget(view, event.clientX, event.clientY);
+          return Number.isFinite(source) && target ? applyBlockDrop(view, source, target) : true;
+        }
         const images = imageFilesFrom((event as DragEvent).dataTransfer?.files);
         if (images.length === 0) return false;
         event.preventDefault();
@@ -133,22 +166,32 @@ function HostEditor() {
           void insertImages(view, images, view.state.selection.from);
           return true;
         }
-        // Rich text from outside the app is converted to the editor's own
-        // nodes first. A copy made inside the editor pastes as it is.
+        // Rich text from outside the app is converted first. A copy made
+        // inside the editor already is the editor's own nodes.
         const html = event.clipboardData?.getData('text/html');
-        if (html && html.trim().length > 0 && !html.includes('data-pm-slice')) {
-          const converted = htmlToEditorHtml(html);
-          if (converted && converted !== '<p></p>') {
-            event.preventDefault();
-            const dom = new DOMParser().parseFromString(converted, 'text/html');
-            const slice = PMDOMParser.fromSchema(view.state.schema).parseSlice(dom.body, {
-              preserveWhitespace: true
-            });
-            view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView());
-            return true;
-          }
+        if (html && html.trim().length > 0 && !html.includes('data-pm-slice') && editorRef.current) {
+          event.preventDefault();
+          void insertConvertedHtml(editorRef.current, html);
+          return true;
         }
         return false;
+      },
+      handleDOMEvents: {
+        dragover: (view, event) => {
+          if (!event.dataTransfer?.types.includes(BLOCK_DRAG_MIME) || !containerRef.current) return false;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+          setDropMark(dropMarkAt(view, containerRef.current, event.clientX, event.clientY));
+          return true;
+        },
+        dragleave: (_view, event) => {
+          if (!containerRef.current?.contains(event.relatedTarget as Node | null)) setDropMark(null);
+          return false;
+        },
+        dragend: () => {
+          setDropMark(null);
+          return false;
+        }
       },
       // ⌘-click follows a link. A plain click places the cursor, as in any editor.
       handleClick: (_view, _pos, event) => {
@@ -159,11 +202,15 @@ function HostEditor() {
         return true;
       }
     },
+    // Tells the app which pane the user is working in.
+    onFocus: () => void post({ type: 'focused' }),
     onUpdate: () => {
       if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
       saveTimer.current = window.setTimeout(() => window.heraclesEditor?.flush(), SAVE_DELAY_MS);
     }
   });
+
+  editorRef.current = editor;
 
   useEffect(() => {
     if (!editor) return;
@@ -191,7 +238,15 @@ function HostEditor() {
       flush,
       focus: () => editor.commands.focus(),
       content: () => JSON.stringify(editor.getJSON()),
-      insertText: (text) => editor.chain().focus('end').insertContent(text).run()
+      insertText: (text) => editor.chain().focus('end').insertContent(text).run(),
+      scrollToBlock: (blockId) => {
+        const block = document.querySelector(`[data-block-id="${CSS.escape(blockId)}"]`);
+        if (!block) return false;
+        block.scrollIntoView({ block: 'center' });
+        block.classList.add('block-revealed');
+        window.setTimeout(() => block.classList.remove('block-revealed'), 1600);
+        return true;
+      }
     };
 
     // Leaving the page, or the window going to the background, must not
@@ -213,9 +268,83 @@ function HostEditor() {
   }, [editor]);
 
   return (
-    <div className="editor-host">
+    <div
+      className="editor-host"
+      ref={(element) => {
+        containerRef.current = element;
+        setContainer(element);
+      }}
+    >
+      {editor && (
+        <BubbleMenu
+          editor={editor}
+          className="editor-bubble"
+          tippyOptions={{ duration: 150, placement: 'top-start', offset: [0, 8] }}
+          shouldShow={({ editor: current, state }) =>
+            current.isEditable && current.isFocused && !state.selection.empty
+          }
+        >
+          <div className="editor-toolbar__group">
+            <ToolbarButton
+              label="Text"
+              active={editor.isActive('paragraph')}
+              onClick={() => editor.chain().focus().setParagraph().run()}
+            />
+            {([1, 2, 3] as const).map((level) => (
+              <ToolbarButton
+                key={level}
+                label={`H${level}`}
+                active={editor.isActive('heading', { level })}
+                onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
+              />
+            ))}
+          </div>
+          <div className="editor-toolbar__group">
+            <ToolbarButton
+              label="B"
+              kind="bold"
+              active={editor.isActive('bold')}
+              onClick={() => editor.chain().focus().toggleBold().run()}
+            />
+            <ToolbarButton
+              label="I"
+              kind="italic"
+              active={editor.isActive('italic')}
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+            />
+            <ToolbarButton
+              label="S"
+              kind="strike"
+              active={editor.isActive('strike')}
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+            />
+          </div>
+        </BubbleMenu>
+      )}
       <EditorContent editor={editor} />
+      {editor && container && (
+        <BlockTools
+          editor={editor}
+          container={container}
+          dropMark={dropMark}
+          onCopyLink={(blockId) => void post({ type: 'copyBlockLink', blockId })}
+        />
+      )}
     </div>
+  );
+}
+
+function ToolbarButton(props: { label: string; kind?: string; active: boolean; onClick: () => void }) {
+  const kind = props.kind ? ` editor-toolbar__button--${props.kind}` : '';
+  return (
+    <button
+      type="button"
+      className={`editor-toolbar__button${kind} ${props.active ? 'is-active' : ''}`}
+      aria-pressed={props.active}
+      onClick={props.onClick}
+    >
+      {props.label}
+    </button>
   );
 }
 

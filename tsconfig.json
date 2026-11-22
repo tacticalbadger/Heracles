@@ -13,5 +13,5 @@
       "@/*": ["renderer/src/*"]
     }
   },
-  "include": ["renderer/src"]
+  "include": ["renderer/src", "renderer/editor-host"]
 }

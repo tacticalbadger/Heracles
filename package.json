@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently -k \"vite --config vite.config.ts\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
+    "build:editor": "vite build --config vite.editor.config.ts",
     "package:mac": "npm run build && electron-builder --mac --dir",
     "package:mac:dmg": "npm run build && electron-builder --mac dmg",
     "package:win": "npm run build && electron-builder --win nsis --config.directories.output=app/windows",

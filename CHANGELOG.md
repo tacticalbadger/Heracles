@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Native Mac app, first stage** — the start of the Swift + Rust rewrite
+  planned in [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
+  It lives beside the Electron app, which is unchanged and still the release.
+  - `core/` is **heracles-core**, a Rust library that owns the data: a SQLite
+    schema with foreign keys and WAL, one write transaction per user action,
+    documents stored as block JSON in ProseMirror's shape, images in a
+    content-addressed store outside note content, FTS5 search, and a change
+    feed that tells every window what each write touched.
+  - A one-time importer brings the Electron library (`heracles.sqlite`)
+    across: it backs the old database up first, only reads it, converts each
+    note's HTML to block JSON, moves base64 images into the image store, and
+    repairs what the old schema allowed and the new one does not (orphaned
+    notes, cards in no column), reporting every repair.
+  - `macos/` is the app: a SwiftUI shell (sidebar, search, kanban board,
+    multiple windows) over the core through UniFFI bindings, with the existing
+    TipTap editor hosted in a web view (`renderer/editor-host/`) until a
+    native block editor replaces it.
+  - Build with `macos/build-app.sh`. See
+    [`BUILDING.md`](./BUILDING.md#building-the-native-mac-app-in-progress).
+
 - **`npm run release:upload`** — uploads a built release (installer, zip,
   blockmaps, and the `latest-*.yml` update feed) to the Cloudflare R2 bucket
   that serves auto-updates, replacing the manual dashboard/AWS-CLI step. Signs

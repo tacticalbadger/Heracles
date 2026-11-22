@@ -153,7 +153,24 @@ renderer/src/
 │   ├── TaskDetailModal.tsx Task detail: fields, subtasks, comments, move menu
 │   └── IconPicker.tsx     Emoji icon picker
 └── styles.css             All renderer styles
+renderer/editor-host/      The same editor as one page, for the native app's web view
+
+core/                      heracles-core: the native app's data layer (Rust)
+├── src/doc/               Block document model, HTML → document conversion
+├── src/store/             SQLite schema, notes, boards, search, image store
+├── src/legacy.rs          One-time import of the Electron library
+├── src/changes.rs         Change feed that keeps every window current
+└── tests/                 Behaviour tests, one file per area
+macos/                     The native Mac app (Swift)
+├── build-app.sh           Builds build/Heracles.app
+├── build-core.sh          Builds the core and its Swift bindings
+├── Sources/HeraclesCore/  Generated bindings to the core
+├── Sources/HeraclesApp/   Model, sidebar, board, editor web view
+└── Tests/                 Binding tests and app model tests
+tools/bindgen/             UniFFI's Swift bindings generator, version-pinned
 ```
+
+The native app is a rewrite in progress. The Electron app is still what ships.
 
 ## Data storage
 

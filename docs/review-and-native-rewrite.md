@@ -115,8 +115,9 @@ corrupt data.
 
 ## Native rewrite plan
 
-This is a proposal. Nothing in it has been built or prototyped, and the library
-names are candidates to evaluate.
+This began as a proposal. The first stage has since been built: see
+[Rewrite status](#rewrite-status) at the end for what exists, which choices
+were made along the way, and what is still to do.
 
 ### Decide first: Windows
 
@@ -210,3 +211,104 @@ foreign keys. It writes a backup first, as the notebook migration does today.
   configured.
 - Sync model, attachment storage, and local encryption, which
   `docs/architecture.md` already lists as undecided.
+
+## Rewrite status
+
+Updated 2026-11-21. Work is on the `native-rewrite` branch. The Electron app
+is unchanged and is still the release.
+
+### Built
+
+**The core** (`core/`, Rust, 165 tests via `cargo test`):
+
+- SQLite schema with foreign keys, `ON DELETE CASCADE`, WAL, and one write
+  transaction per user action. `CHECK` constraints hold the invariants:
+  notebooks at the top level and nothing else there, and every task either in
+  a column or under a parent.
+- Documents as block JSON in ProseMirror's shape, kept apart from the note
+  row. Unknown node types and attributes survive a round trip.
+- HTML to document conversion, used for migrating stored notes and for
+  importing HTML. Output is built from an allow-list, so nothing from the
+  input is copied through.
+- Content-addressed image store. Saving a document moves any embedded
+  `data:` image into it.
+- FTS5 search over titles and text, with prefix matching and snippets.
+- A change feed: each committed write announces what it touched, in commit
+  order.
+- The Electron library importer, with a backup first and a report of every
+  repair.
+- UniFFI bindings for Swift.
+
+**The app** (`macos/`, Swift, 32 tests via `swift test`, plus `--self-test`):
+
+- Sidebar with notebooks, nested notes, favorites, archive, trash, and search.
+- Kanban board with drag between columns.
+- The existing TipTap editor in a web view (option B), loading and saving
+  block JSON through the core.
+- Multiple windows on one shared model.
+- `heracles://note/<id>` links, registered in `Info.plist`.
+
+### Open findings this removes
+
+Each is removed in the native code only. The Electron app still has them.
+
+| Finding | How |
+|---|---|
+| 1. Last edit lost on quit | Quitting waits for every editor to hand over its pending change. Closing a window does the same. |
+| 2. Windows do not see each other's changes | Every window reads one model, which the change feed keeps current. |
+| 3. Notebook delete not atomic | One transaction, and adopted notes get positions of their own. Tested. |
+| 4. SQLite defaults | WAL, foreign keys, busy timeout, cascades in the schema. |
+| 5. Duplicate board is many calls | One transaction in the core. Tested. |
+| 6. Refetching all content | Listing notes never reads content. |
+| 9. `htmlToEditorHtml` filters nothing | The converter's output is allow-listed, and link and image URLs are checked by scheme. Tested with hostile input. The web editor still uses the old function for paste: see below. |
+| 11. Links cannot be opened | ⌘-click opens a link. |
+| 12. Root task with no column | Refused by the core and by a `CHECK` constraint. The importer gives such tasks a column. |
+| 13. No Content-Security-Policy | The editor page has one, and is served from its own URL scheme, not `file:`. |
+
+### Choices made that the plan left open
+
+These were made to keep moving. Each is easy to change now and harder later.
+
+- **Minimum macOS is 14.** Set in `macos/Package.swift` and
+  `macos/build-core.sh`.
+- **No App Sandbox**, matching the Electron app.
+- **The bundle id is `com.heracles.notes.native`**, so both apps can be
+  installed during the rewrite. Taking over `com.heracles.notes` is a release
+  decision.
+- **The library lives in the Electron app's folder** as `heracles.db`, beside
+  `heracles.sqlite`, with images in `images/` and import backups in
+  `backups/`.
+- **SwiftPM builds the app**, and a script assembles the bundle. The plan's
+  `xcodebuild archive` flow is not set up.
+- **Archive still does not cascade**, as in the Electron app. The roadmap
+  question is undecided.
+- **Windows is undecided.** Nothing here blocks sharing the core with a
+  Windows interface.
+
+### Not built yet
+
+- Pane splits and tabs. A window shows one note.
+- The editor's block gutter: drag handle, block menu, and dragging blocks into
+  columns. The slash menu and all block types work.
+- The task detail view: subtasks, comments, due dates, labels, and reminders
+  can be stored and are shown on cards, but only title and completion can be
+  edited.
+- Reminders through `UNUserNotificationCenter`. The core lists outstanding
+  reminders (`list_reminders`). Nothing schedules them.
+- Markdown import, HTML import from the menu, and export. The core converts
+  HTML. Nothing calls it for import yet, and Markdown is not started.
+- Icon picker, the ⌘K switcher, and menu bar commands.
+- Release signing, notarization, and Sparkle.
+- Paste in the web editor still goes through `htmlToEditorHtml` and TipTap's
+  schema, as in the Electron app. Routing paste through the core's converter
+  would close finding 9 there too.
+
+### Not verified
+
+- The importer has only been run on databases built by its tests. No real
+  Electron library was on the machine it was written on. Try it first with
+  `HERACLES_DATA_DIR` pointing at a copy.
+- The app's windows were checked by drawing them offscreen
+  (`--snapshot`) and by `--self-test`. Nobody has used it by hand yet.
+- Findings marked **read** above were not reproduced in the Electron app
+  before being designed out.

@@ -86,6 +86,73 @@ npx electron-builder install-app-deps
 
 ---
 
+## Building the native Mac app (in progress)
+
+The Swift + Rust rewrite lives beside the Electron app and builds separately.
+It is not a release yet: see the status section of
+[`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
+
+You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`
+and `x86_64-apple-darwin` targets), Xcode, and Node.js.
+
+```bash
+macos/build-app.sh              # universal build → build/Heracles.app
+macos/build-app.sh --host-only  # this Mac's processor only, faster
+```
+
+The script runs three steps, which you can also run one at a time:
+
+| Step | Command | Produces |
+| --- | --- | --- |
+| Web editor | `npm run build:editor` | `macos/Sources/HeraclesApp/Resources/editor/` |
+| Rust core | `macos/build-core.sh` | `macos/Frameworks/HeraclesCoreFFI.xcframework` and the Swift bindings in `macos/Sources/HeraclesCore/Generated/` |
+| App | `swift build --package-path macos` | the `Heracles` executable |
+
+All three outputs are git-ignored. After changing Rust code, run
+`macos/build-core.sh` again before building or testing the Swift package.
+
+The app is signed ad hoc, which runs on the Mac that built it. Release
+signing, notarization, and Sparkle updates are not set up yet.
+
+### Tests
+
+```bash
+cargo test                           # the core: storage, documents, search, import
+swift test --package-path macos      # the bindings and the app's model
+build/Heracles.app/Contents/MacOS/Heracles --self-test
+```
+
+`--self-test` runs the bundled web editor in a real web view against a
+throwaway library: it loads a document, types into it, and checks that the
+edit reaches the core. It prints one line per check and exits 0 if all pass.
+
+`Heracles --snapshot <folder>` draws the app's window, filled with sample
+notes, into PNG files. It is a way to look at the interface from a script.
+
+### Trying it without touching your library
+
+By default the app uses `~/Library/Application Support/Heracles/`, the same
+folder as the Electron app, and on first launch imports `heracles.sqlite` from
+it into a new `heracles.db`. The Electron database is backed up and never
+modified. To use a different folder:
+
+```bash
+HERACLES_DATA_DIR=/tmp/heracles-trial build/Heracles.app/Contents/MacOS/Heracles
+```
+
+### If `xcodebuild` or `swift test` cannot find Xcode
+
+When the command line tools are selected instead of Xcode, the build scripts
+find `/Applications/Xcode.app` by themselves. For commands you run directly,
+either select Xcode once with `sudo xcode-select -s /Applications/Xcode.app`,
+or prefix the command:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-path macos
+```
+
+---
+
 ## Building for Windows
 
 There are two viable approaches.

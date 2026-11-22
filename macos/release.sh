@@ -48,8 +48,8 @@ ZIP=build/Heracles-$VERSION-mac.zip
 
 echo "==> Signing as $IDENTITY"
 # The hardened runtime with no exceptions: the app loads no unsigned code and
-# makes no executable memory of its own. The web editor's JavaScript runs in
-# WebKit's own process, and the Rust core is linked into the executable.
+# makes no executable memory of its own. It is one executable, with the Rust
+# core linked into it.
 codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP"
 codesign --verify --strict --verbose=2 "$APP"
 

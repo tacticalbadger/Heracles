@@ -73,11 +73,3 @@ struct ReminderPlanTests {
         #expect(plan.toAdd[0].title == "Untitled task")
     }
 }
-
-struct NewEditorMessageTests {
-    @Test func theNewerMessagesAreUnderstood() {
-        #expect(EditorMessage(body: ["type": "convertHtml", "html": "<p>x</p>"]) == .convertHTML(html: "<p>x</p>"))
-        #expect(EditorMessage(body: ["type": "copyBlockLink", "blockId": "b1"]) == .copyBlockLink(blockID: "b1"))
-        #expect(EditorMessage(body: ["type": "copyBlockLink"]) == nil)
-    }
-}

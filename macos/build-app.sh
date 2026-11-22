@@ -4,8 +4,8 @@
 # Usage: macos/build-app.sh [--host-only]
 #   --host-only   build for this Mac's processor only. Faster, for development.
 #
-# The app is signed ad hoc, which is enough to run it on this Mac. Signing
-# for release and notarization are not set up yet.
+# The app is signed ad hoc, which is enough to run it on this Mac. For a
+# build to give to someone else, see release.sh.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -21,10 +21,6 @@ else
     ARCH_FLAGS="--arch arm64 --arch x86_64"
 fi
 
-echo "==> Building the editor"
-[ -d node_modules ] || npm install --ignore-scripts --no-audit --no-fund
-npm run --silent build:editor
-
 macos/build-core.sh "$@"
 
 echo "==> Building the app"
@@ -38,8 +34,6 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp macos/Info.plist "$APP/Contents/Info.plist"
 cp "$PRODUCTS/Heracles" "$APP/Contents/MacOS/Heracles"
-# The web editor, in the bundle SwiftPM made for the package's resources.
-cp -R "$PRODUCTS/Heracles_HeraclesApp.bundle" "$APP/Contents/Resources/"
 codesign --force --sign - "$APP" >/dev/null 2>&1
 
 echo "Built $APP"

@@ -40,14 +40,18 @@ struct NoteDetailView: View {
                     .disabled(note.trashed)
                     .onSubmit(commitTitle)
             }
-            .padding(.horizontal, 32)
+            // A page's title sits over the editor's text column, which is
+            // centered once the pane is wider than a comfortable line.
+            .frame(maxWidth: note.kind == .todoList ? .infinity : EditorTheme.contentWidth, alignment: .leading)
+            .padding(.horizontal, note.kind == .todoList ? 32 : EditorTheme.gutter)
+            .frame(maxWidth: .infinity)
             .padding(.top, 20)
             .padding(.bottom, 4)
 
             if note.kind == .todoList {
                 BoardView(todoList: note)
             } else {
-                EditorWebView(
+                NoteEditor(
                     noteID: note.id, editable: !note.trashed,
                     change: model.documentChange(for: note.id), model: model,
                     reveal: workspace.blockToReveal(in: note.id),

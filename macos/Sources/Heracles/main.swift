@@ -2,8 +2,8 @@ import AppKit
 import HeraclesApp
 
 if CommandLine.arguments.contains("--self-test") {
-    // Drives the real editor in a real web view against a throwaway library,
-    // then exits 0 if every check passed. See SelfTest.swift.
+    // Drives the editor in a window against a throwaway library, then exits
+    // 0 if every check passed. See SelfTest.swift.
     let app = NSApplication.shared
     app.setActivationPolicy(.accessory)
     Task { @MainActor in

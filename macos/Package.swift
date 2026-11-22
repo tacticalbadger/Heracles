@@ -17,11 +17,7 @@ let package = Package(
         .target(name: "HeraclesCore", dependencies: ["HeraclesCoreFFI"]),
         .testTarget(name: "HeraclesCoreTests", dependencies: ["HeraclesCore"]),
         // Everything in the app except its entry point, so it can be tested.
-        .target(
-            name: "HeraclesApp",
-            dependencies: ["HeraclesCore"],
-            // The bundled web editor, built by `npm run build:editor`.
-            resources: [.copy("Resources/editor")]),
+        .target(name: "HeraclesApp", dependencies: ["HeraclesCore"]),
         .testTarget(name: "HeraclesAppTests", dependencies: ["HeraclesApp"]),
         .executableTarget(name: "Heracles", dependencies: ["HeraclesApp"]),
     ]

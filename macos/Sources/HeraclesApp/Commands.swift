@@ -1,3 +1,4 @@
+import AppKit
 import HeraclesCore
 import SwiftUI
 
@@ -49,6 +50,39 @@ struct HeraclesCommands: Commands {
             }
             .disabled(workspace?.activeNote == nil)
         }
+        CommandMenu("Format") {
+            Button("Bold") { format(.mark(.bold)) }
+                .keyboardShortcut("b")
+            Button("Italic") { format(.mark(.italic)) }
+                .keyboardShortcut("i")
+            Button("Strikethrough") { format(.mark(.strike)) }
+                .keyboardShortcut("x", modifiers: [.command, .shift])
+            Button("Code") { format(.mark(.code)) }
+                .keyboardShortcut("e")
+            // Command-K, while text is selected. Otherwise it is Quick Open.
+            Button("Link…") { format(.link) }
+            Divider()
+            Button("Text") { format(.block(.paragraph)) }
+                .keyboardShortcut("0", modifiers: [.command, .option])
+            Button("Heading 1") { format(.block(.heading(1))) }
+                .keyboardShortcut("1", modifiers: [.command, .option])
+            Button("Heading 2") { format(.block(.heading(2))) }
+                .keyboardShortcut("2", modifiers: [.command, .option])
+            Button("Heading 3") { format(.block(.heading(3))) }
+                .keyboardShortcut("3", modifiers: [.command, .option])
+            Divider()
+            Button("Bullet List") { format(.block(.bullet)) }
+                .keyboardShortcut("8", modifiers: [.command, .shift])
+            Button("Numbered List") { format(.block(.numbered)) }
+                .keyboardShortcut("7", modifiers: [.command, .shift])
+            Button("Task List") { format(.block(.todo)) }
+                .keyboardShortcut("9", modifiers: [.command, .shift])
+            Divider()
+            Button("Quote") { format(.block(.quote)) }
+            Button("Callout") { format(.block(.callout)) }
+            Button("Toggle") { format(.block(.toggle)) }
+            Button("Code Block") { format(.block(.code)) }
+        }
         CommandGroup(after: .sidebar) {
             Button("Split Right") { workspace?.splitFocused(.right) }
                 .keyboardShortcut("\\")
@@ -57,4 +91,12 @@ struct HeraclesCommands: Commands {
             Divider()
         }
     }
+}
+
+/// Send a formatting command to whichever editor has the keyboard. It
+/// travels the way menu commands do on the Mac, to the view being typed in,
+/// so it lands in the right pane of the right window without being told.
+@MainActor
+private func format(_ format: EditorFormat) {
+    NSApp.sendAction(#selector(BlockTextView.applyEditorFormat(_:)), to: nil, from: FormatRequest(format))
 }

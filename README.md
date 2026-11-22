@@ -173,7 +173,7 @@ macos/                     The native Mac app (Swift)
 tools/bindgen/             UniFFI's Swift bindings generator, version-pinned
 ```
 
-The native app is a rewrite in progress. Its first preview, 0.2.0, is on the
+The native app is a rewrite in progress. Its first preview, 0.2.1, is on the
 [releases page](https://github.com/tacticalbadger/Heracles/releases). The
 Electron app is still the one that updates itself.
 

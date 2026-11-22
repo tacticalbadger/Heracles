@@ -214,7 +214,7 @@ foreign keys. It writes a backup first, as the notebook migration does today.
 
 ## Rewrite status
 
-Updated 2026-11-22. Work is on the `native-rewrite` branch. Version 0.2.0 of
+Updated 2026-11-22. Work is on the `native-rewrite` branch. Version 0.2.1 of
 the native app is published as a preview on the GitHub releases page, signed
 and not notarized. The Electron app is unchanged and is still the one that
 updates itself.
@@ -321,7 +321,7 @@ These were made to keep moving. Each is easy to change now and harder later.
 
 ### Not verified
 
-- **Notarization has not been run, and 0.2.0 was published without it.** The
+- **Notarization has not been run, and 0.2.1 was published without it.** The
   script was run as far as signing: the build is signed with the Developer ID
   certificate, has the hardened runtime, a secure timestamp and no
   entitlements, and passes its self-test in that state. No notary credentials

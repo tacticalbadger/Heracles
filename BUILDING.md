@@ -89,7 +89,7 @@ npx electron-builder install-app-deps
 ## Building the native Mac app (in progress)
 
 The Swift + Rust rewrite lives beside the Electron app and builds separately.
-Version 0.2.0 is its first preview release. For what works and what has not
+Version 0.2.1 is its first preview release. For what works and what has not
 been checked, see the status section of
 [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
 
@@ -167,16 +167,23 @@ To publish a version:
    for the version to `CHANGELOG.md`. The native app has its own version
    number. `package.json` is the Electron app's.
 2. Run `macos/release.sh`.
-3. Tag the commit `v<version>`, push the tag, and attach
-   `build/Heracles-<version>-mac.zip` to a GitHub release for that tag.
+3. Tag the commit `v<version>` and push the tag.
+4. On GitHub, create the release for that tag **as a draft**, attach
+   `build/Heracles-<version>-mac.zip`, and only then publish it.
+
+The order in step 4 matters. This repository has immutable releases turned
+on: once a release is published, files cannot be added to it, replaced or
+removed, and its tag name can never be used again, even if the release is
+deleted. 0.2.0 was published before its file was attached, which is why it
+has no download and the first preview is 0.2.1.
 
 Updates are not set up: there is no Sparkle feed yet, so a new version is
 installed by replacing the app.
 
-Version 0.2.0 was published signed and not notarized, because no notary
-credentials were at hand. To replace its download with a notarized one, run
-`macos/release.sh` with the credentials and upload the new zip to the same
-release.
+Version 0.2.1 was published signed and not notarized, because no notary
+credentials were at hand. Its download cannot be replaced, so a notarized
+build needs the next version number: set it, run `macos/release.sh` with the
+credentials, and publish that.
 
 ### Trying it without touching your library
 

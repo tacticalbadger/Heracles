@@ -164,14 +164,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New IPC: `notes.importMarkdown()` and `notes.importHtml()` open native
   multi-select file dialogs and return file names + contents.
 
-## [0.2.0] - 2026-11-22
+## [0.2.1] - 2026-11-22
 
 The first preview of the native Mac app. This version number belongs to the
 native app only: the Electron app is still 0.1.0, and its changes since then
 are under Unreleased above.
 
-The download is `Heracles-0.2.0-mac.zip` on the
-[release page](https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.0):
+The download is `Heracles-0.2.1-mac.zip` on the
+[release page](https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.1):
 a universal app for macOS 14 or later. It is signed with the Developer ID
 certificate and **not notarized**, so macOS refuses to open it the first time;
 allow it under System Settings → Privacy & Security → Open Anyway. It does not
@@ -224,6 +224,12 @@ update itself.
     Developer ID certificate under the hardened runtime with no exceptions,
     notarizes it and staples the ticket.
 
+## [0.2.0] - 2026-11-22
+
+Published on GitHub without its download, by mistake. The repository's
+releases are immutable, so the file could not be added afterwards. 0.2.1 is
+the same app with the download attached.
+
 ## [0.1.0]
 
 ### Added
@@ -242,5 +248,6 @@ update itself.
   boundary.
 
 [Unreleased]: https://github.com/
+[0.2.1]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.1
 [0.2.0]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.0
 [0.1.0]: https://github.com/

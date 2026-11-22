@@ -1,209 +1,120 @@
 # Heracles
 
-A local-first, hierarchical notebook for macOS. Electron shell, React renderer, TipTap rich-text editor, SQLite storage.
+A local-first, hierarchical notebook for macOS: pages in notebooks, a block editor, split panes and kanban boards. Everything is stored on your Mac in one SQLite database.
+
+Heracles is a native Mac app, written in Swift over a Rust core. It replaces the Electron app this project started as. That app is still in the repository and is described in [`docs/electron.md`](./docs/electron.md).
+
+## Status and download
+
+The native app is a preview. The latest build is on the [releases page](https://github.com/tacticalbadger/Heracles/releases): a universal app for macOS 14 or later.
+
+- The build is signed with a Developer ID certificate and is not notarized, so macOS refuses to open it the first time. Allow it under System Settings → Privacy & Security → Open Anyway.
+- It does not update itself yet. To install a newer version, replace the app.
+- The note editor is still the web editor from the Electron app, shown in a web view. A native editor is being built to replace it.
+- The first time it starts, it copies an existing Electron library into its own database. See [Data storage](#data-storage).
+
+What is built, what is missing and what has not been checked is recorded in the [rewrite status](./docs/review-and-native-rewrite.md#rewrite-status).
 
 ## Features
 
-- **Notebooks (top-level groups)** — the sidebar is a filing cabinet: create any number of notebooks, each holding sections and pages/todos; rename, collapse, drag-reorder, and delete them
-- **Hierarchical pages** — nest pages under pages or sections inside a notebook; drag-reorder/reparent in the sidebar
-- **Create under active context** — new pages (blank or imported) are created as children of whatever page/section is currently active, in its notebook
-- **Multi-pane workspace** — split panes horizontally or vertically, drag tabs/pages between panes, drop on a pane edge to split
-- **Tabbed panes** — each pane has its own tab strip; close a tab without closing the pane
-- **Rich-text editor** — TipTap with floating bubble menu (bold/italic/strike, headings), block handles (`⠿` / `+` / `⋮⋮`), task lists, code blocks (CodeMirror), and links
-- **Images** — drag an image file onto a note (or paste a screenshot) to insert an image block; embedded inline as data URLs, so notes stay local-first
-- **Column layouts** — drag a block by its `⠿` grip to another block's right edge to make columns; add more columns by dropping at the edge, and drag the boundary to resize
-- **Import Markdown** — "New page from Markdown" turns one or more `.md` files into pages, converting headings, lists, task lists, code blocks, and links to editor content
-- **Import HTML** — "New page from HTML" imports `.html`/`.htm` files the same way, preserving common formatting
-- **Paste HTML** — pasting rich HTML (e.g. from a web page) is converted to clean editor content instead of raw markup
-- **Page states** — favorite, archive, trash (with undo), permanent delete; trash, restore, and permanent delete apply to a page's whole subtree (deleting a todo list also removes its board data)
-- **Auto-collapse panes** — deleting/trashing a page closes its tabs everywhere and collapses any pane that becomes empty, redistributing space to siblings
-- **Icon picker** per page
-- **Multiple windows** — open any page in its own window
-- **Automatic updates** — checks for new versions on launch, downloads in the background, and shows a "Restart to update" banner; signed + notarized builds published to a Cloudflare R2 bucket
-- **Error boundary** — render-error recovery without losing in-memory state
-- **Tasks / Kanban board** — turn a page into a board with custom columns; cards carry priority, due dates, labels, location, reminders, and comments
-- **Reorder columns** — drag a column left/right to rearrange the board; order is persisted
-- **Subtasks** — unlimited nesting; drill into any subtask in the detail modal, with completion roll-up counts on cards
-- **Subtask drag-reorder** — drag the `⋮⋮` handle to reorder subtasks within their parent
-- **Move a subtask anywhere** — the `⤴` menu on each subtask can pop it out into its own card in any column, or re-parent it under any other task (self/descendants excluded)
+- **Notebooks, sections and pages** in a sidebar, nested as deep as you like, with favorites, archive and trash. Trashing, restoring and deleting apply to a page and everything under it.
+- **Panes and tabs.** Split a window right or down, drag the dividers, and drag tabs between panes. Each window remembers its layout, and any number of windows can be open on the same library.
+- **Block editor.** Headings, lists, task lists, quotes, callouts, toggles, code blocks, images and column layouts. Each block has a handle to drag it, duplicate it, turn it into another kind of block, or copy a link to it.
+- **Kanban boards.** A todo list is a board with your own columns. Cards carry notes, priority, a due date, a deadline, labels, a location, reminders, comments and subtasks nested to any depth.
+- **Reminders** arrive as system notifications, whether or not the app is open.
+- **Search** across every note's title and text.
+- **Quick Open** (⌘K) to jump to a note by name.
+- **Import and export.** Import Markdown and HTML files as pages, with their pictures. Export a note as Markdown with its pictures beside it.
+- **Links between notes.** `heracles://` links open a note, or scroll to one block of it.
 
-## Tech stack
+## How it is built
 
 | Layer | Choice |
 |---|---|
-| Shell | Electron 41 |
-| Renderer | React 18 + TypeScript 5.6 |
-| Editor | TipTap 2 + CodeMirror 6 |
-| Bundler | Vite 8 |
-| Storage | SQLite via `better-sqlite3` + `drizzle-orm` |
-| Packaging | `electron-builder` |
+| Interface | Swift 6, SwiftUI and AppKit |
+| Core | Rust (`heracles-core`): storage, documents, search, import and export |
+| Bridge | UniFFI, which generates the Swift bindings to the core |
+| Storage | SQLite with full-text search, bundled into the core |
+| Editor | TipTap in a web view, until the native editor replaces it |
+| Build | Cargo and Swift Package Manager, run by the scripts in `macos/` |
 
-## Getting started
+The core owns the data. Every window reads from it and subscribes to its change feed, which is what keeps two windows showing the same note in step. Documents are stored as blocks in JSON, and pictures are stored once each, outside the notes that use them.
+
+## Building
+
+You need Rust (through [rustup](https://rustup.rs), with the `aarch64-apple-darwin` and `x86_64-apple-darwin` targets), Xcode and Node.js.
 
 ```bash
-npm install
-npm run dev
+macos/build-app.sh              # universal build → build/Heracles.app
+macos/build-app.sh --host-only  # this Mac's processor only, faster
 ```
 
-Starts Vite on `http://localhost:5173` and launches the Electron shell with DevTools detached.
+To run the tests:
 
-## Scripts
+```bash
+cargo test                           # the core
+swift test --package-path macos      # the bindings and the app's model
+build/Heracles.app/Contents/MacOS/Heracles --self-test
+```
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Vite dev server + Electron with HMR |
-| `npm run build` | Production renderer bundle into `dist/renderer/` |
-| `npm run package:mac` | Build + package an unsigned macOS `.app` into `app/macOS/` |
-| `npm run package:mac:dmg` | Build a `.dmg` installer into `app/macOS/` |
-| `npm run package:win` | Build a Windows NSIS installer into `app/windows/` (run on Windows) |
-| `npm run package:win:dir` | Build an unpacked Windows folder into `app/windows/` |
-| `npm run release:mac` | Build a signed + notarized `zip` + `dmg` for distribution (needs `APPLE_API_*` env vars) |
-| `npm run release:win` | Build a Windows NSIS installer for distribution (run on Windows) |
-| `npm run release:upload` | Upload the built release + update feed to the R2 bucket |
-| `npm run preview` | Preview the built renderer in a browser (no Electron) |
-| `npm test` | Functional test of the SQLite layer and window navigation policy (`scripts/db-cascade-test.cjs`) |
-
-For full build/packaging/distribution instructions on both macOS and Windows
-(including code signing notes and cross-compilation via Docker), see
-[`BUILDING.md`](./BUILDING.md).
-
-## Releases & auto-update
-
-Updates are delivered with [`electron-updater`](https://www.electron.build/auto-update):
-the app polls a release feed (`latest-mac.yml` / `latest.yml`) on a **Cloudflare R2
-public bucket**, downloads new versions in the background, and prompts the user to
-restart. electron-builder's `publish` config (`generic` provider) bakes that bucket
-URL into each build's `app-update.yml`.
-
-Releasing a new version:
-
-1. **Bump `version`** in `package.json` (must be greater than the installed one).
-2. Build the signed artifacts:
-   - macOS: `APPLE_API_KEY=… APPLE_API_KEY_ID=… APPLE_API_ISSUER=… npm run release:mac`
-     (signs with Developer ID, notarizes + staples the `.app`/`.zip`/`.dmg`).
-   - Windows: `npm run release:win` on a Windows machine — see
-     [`windowsInstructions.md`](./windowsInstructions.md) for signing.
-3. **Upload** with `npm run release:upload` — it pushes the update feed
-   (`latest-mac.yml` / `latest.yml`), the `*.zip` (+ `.blockmap`), and the
-   installer (`.dmg` / `.exe`) to the **bucket root** so they are served at the
-   public URL. It signs requests against R2's S3 API directly (no CLI needed);
-   put an R2 API token in `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` env vars
-   or a git-ignored `.env.r2` file. Pass `-- --dry-run` to preview.
-
-For auto-update to *apply* (not just download), builds must be code-signed: macOS
-needs a notarized Developer ID build (already wired); Windows needs an Authenticode
-signature so the updater can verify the publisher — instructions in
-[`windowsInstructions.md`](./windowsInstructions.md).
-
-## Documentation
-
-- [`CHANGELOG.md`](./CHANGELOG.md) — notable changes per release
-- [`ROADMAP.md`](./ROADMAP.md) — known gaps and planned work
-- [`docs/architecture.md`](./docs/architecture.md) — goals, stack, and design notes
-- [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md) — code review findings (fixed and open) and the Swift + Rust rewrite plan
-- [`BUILDING.md`](./BUILDING.md) — build, package, and distribution guide
-- [`windowsInstructions.md`](./windowsInstructions.md) — sign & ship the official Windows build
-
-## Sibling repositories
-
-Heracles ships from two platform repositories that share this codebase:
-
-- [Heracles](https://github.com/mattdobbs/Heracles) — macOS (signed + notarized builds, R2 auto-update feed)
-- [Heracles-Windows](https://github.com/mattdobbs/Heracles-Windows) — Windows (NSIS installer; signing per `windowsInstructions.md`)
-
-Everything outside platform packaging config is shared code. Apply changes —
-and their documentation updates — to both repositories together: commit to one,
-then merge or cherry-pick into the other (the repos share git history, so
-`git merge` works cleanly). Platform-specific bits (electron-builder
-`mac`/`win`/`nsis` config, signing setup, the README intro) stay in their
-own repo.
+[`BUILDING.md`](./BUILDING.md#building-the-native-mac-app-in-progress) has the details, including how to sign and publish a release.
 
 ## Project structure
 
 ```
-electron/                  Electron main + preload + SQLite layer
-├── main.cjs               BrowserWindow lifecycle, IPC handlers
-├── navigation.cjs         Which URLs a window may display (app document only)
-├── preload.cjs            window.heracles bridge (contextBridge)
-├── db.cjs                 better-sqlite3 + drizzle schema & queries
-└── migrations/            drizzle migrations
-renderer/src/
-├── App.tsx                Top-level state, IPC orchestration
-├── ErrorBoundary.tsx      Global render-error recovery
-├── editor/                TipTap extensions, slash menu, CodeMirror block
-│   ├── ImageBlock.ts      Block image node (drag/paste → inline data URL)
-│   ├── ColumnBlock.ts     Columns container node (flex row)
-│   ├── Column.ts          Single resizable column node
-│   ├── ColumnNodeView.tsx Column render + drag-to-resize handle
-│   └── columnCommands.ts  Block-drop geometry, restructuring tx, normalizer
-├── lib/
-│   ├── markdownImport.ts  Markdown → TipTap-compatible HTML converter
-│   └── htmlImport.ts      HTML sanitizer/normalizer for import & paste
-├── workspace/
-│   ├── Sidebar.tsx        Hierarchical tree, drag-drop reorder/reparent
-│   ├── PaneTree.tsx       Recursive split/leaf renderer
-│   ├── EditorPane.tsx     Tab strip + TipTap editor + bubble/block menus
-│   ├── paneTreeOps.ts     Pure functions over the pane tree (split/move/close)
-│   ├── PageMenu.tsx       Right-click context menu (active page)
-│   ├── SidebarItemMenu.tsx Right-click context menu (sidebar item)
-│   ├── SectionMenu.tsx    Section header context menu
-│   ├── MovePagePicker.tsx "Move to..." dialog
-│   ├── KanbanBoard.tsx    Task board: columns, cards, drag-drop, composer
-│   ├── TaskCard.tsx       Single card (priority flag, due date, subtask count)
-│   ├── TaskDetailModal.tsx Task detail: fields, subtasks, comments, move menu
-│   └── IconPicker.tsx     Emoji icon picker
-└── styles.css             All renderer styles
-renderer/editor-host/      The same editor as one page, for the native app's web view
-├── main.tsx               Editor, paste and drop handling, bridge to the app
-└── BlockTools.tsx         Block handle, block menu, drop line
-
-core/                      heracles-core: the native app's data layer (Rust)
-├── src/doc/               Block document model, HTML → document conversion
+core/                      heracles-core: the app's data layer (Rust)
+├── src/doc/               Block document model, HTML and Markdown conversion
 ├── src/store/             SQLite schema, notes, boards, search, image store
+├── src/transfer.rs        Import and export of files
 ├── src/legacy.rs          One-time import of the Electron library
 ├── src/changes.rs         Change feed that keeps every window current
 └── tests/                 Behaviour tests, one file per area
-macos/                     The native Mac app (Swift)
+macos/                     The Mac app (Swift)
 ├── build-app.sh           Builds build/Heracles.app
 ├── build-core.sh          Builds the core and its Swift bindings
 ├── release.sh             Signs, notarizes and staples a build to distribute
 ├── Sources/HeraclesCore/  Generated bindings to the core
-├── Sources/HeraclesApp/   Model, sidebar, board, editor web view
+├── Sources/HeraclesApp/   Model, sidebar, panes, board, editor web view
 └── Tests/                 Binding tests and app model tests
 tools/bindgen/             UniFFI's Swift bindings generator, version-pinned
+renderer/editor-host/      The web editor as one page, for the app's web view
+electron/, renderer/src/   The Electron app (see docs/electron.md)
 ```
-
-The native app is a rewrite in progress. Its first preview, 0.2.1, is on the
-[releases page](https://github.com/tacticalbadger/Heracles/releases). The
-Electron app is still the one that updates itself.
 
 ## Data storage
 
-A single SQLite database file: `heracles.sqlite` inside Electron's `userData` directory.
+The app keeps everything in `~/Library/Application Support/Heracles/`:
 
-| Mode | Path (macOS) |
+| Path | Holds |
 |---|---|
-| Dev | `~/Library/Application Support/heracles/heracles.sqlite` |
-| Packaged | `~/Library/Application Support/Heracles/heracles.sqlite` |
+| `heracles.db` | Notes, documents, boards and the search index, in SQLite |
+| `images/` | Pictures, one file each, named by their content |
+| `backups/` | The copy made of an Electron library before it was imported |
 
-Persisted tables: **notes**, plus **task_columns**, **tasks**, and **task_comments** for the Kanban feature. The `notes.kind` column is one of `page`, `section`, `todolist`, or `notebook`; notebooks are the top-level containers (`parent_id IS NULL`) and everything else lives inside one. On first launch after upgrading, a one-time migration creates a default notebook, adopts existing top-level notes into it, and writes a `heracles.pre-notebooks-<timestamp>.sqlite` backup alongside the database. Pane layout and open tabs live in renderer state; sidebar collapse state (including collapsed notebooks) is persisted in `localStorage`.
+The Electron app uses the same folder, with its library in `heracles.sqlite`. The first time the native app starts and finds that file, it backs it up, reads the backup, and copies the library into `heracles.db`. The Electron file is never changed, so the Electron app keeps working. From then on the two apps hold separate copies, and an edit made in one does not appear in the other.
 
-To inspect:
+To try the app on a different folder, start it with `HERACLES_DATA_DIR` set:
 
 ```bash
-sqlite3 ~/Library/Application\ Support/heracles/heracles.sqlite "SELECT id, title, parent_id FROM notes;"
+HERACLES_DATA_DIR=~/heracles-trial build/Heracles.app/Contents/MacOS/Heracles
 ```
 
-## Architecture notes
+## Documentation
 
-- **Pane tree** is an immutable `PaneNode` tree (`leaf` or `split`) manipulated by the pure functions in `renderer/src/workspace/paneTreeOps.ts`. Splits auto-collapse when reduced to one child; removing the last note in a leaf removes the leaf.
-- **IPC** flows through `window.heracles.notes.*` and `window.heracles.tasks.*` declared in `electron/preload.cjs` and handled in `electron/main.cjs`. The renderer never touches SQLite directly. `tasks.move({ id, columnId, parentTaskId, beforeId })` handles both reordering and reparenting/promoting in one call.
-- **Drag-and-drop** uses six custom MIME types: `application/x-heracles-tab` (tab moves between panes), `application/x-heracles-page` (sidebar page onto pane / between panes / into a notebook), `application/x-heracles-task` (card reorder/move between columns), `application/x-heracles-subtask` (subtask reorder within a parent), `application/x-heracles-column` (column reorder on a board), and `application/x-heracles-block` (editor block reorder / make a column).
-- **Notebooks** — modeled as a `kind: 'notebook'` note pinned to the root, reusing the existing note tree (create/rename/reorder/icons/IPC). `electron/db.cjs` enforces the invariant via `resolveParentId` (notebooks stay at the root; non-notebooks can't sit at the root) and a one-time migration; deleting a notebook reassigns its children to the first remaining one. The sidebar renders notebooks as collapsible groups in place of the old "Private" section.
-- **Columns** — `ColumnBlock` (a `<div data-type="columns">` flex row) holds `Column` nodes (`data-type="column"`, with a `data-width` flex weight), so layouts round-trip through the stored note HTML with no DB change. Dragging a block emits `application/x-heracles-block`; `columnCommands.ts` computes the drop target, restructures via one mapped transaction, and a `ColumnsNormalizer` appendTransaction plugin keeps rows valid (drops empty columns, unwraps rows with <2 columns).
-- **Import & paste** — `electron/main.cjs` exposes `notes.importMarkdown()` and `notes.importHtml()` (native file dialogs that read file contents); the renderer converts them with `renderer/src/lib/markdownImport.ts` / `htmlImport.ts`. The same `htmlToEditorHtml` converter powers the editor's `handlePaste`, so pasted HTML is sanitized to supported nodes (`<img>` becomes an image block, `<pre>` becomes a CodeMirror block, checkbox lists become task lists); internal copies (marked with `data-pm-slice`) paste natively so column layouts survive. Markdown import still converts images to links, since relative image paths can't resolve after import.
-- **Subtask moves** — because the task detail modal covers the board, subtasks are moved via the `⤴` menu (not by dragging onto a column). The menu offers every column (promote to a standalone card) and a depth-indented tree of every other task (reparent), filtering out the subtask itself, its descendants, and its current parent.
-- **BubbleMenu host** — TipTap's bubble-menu plugin detaches its DOM via `element.remove()`, which clashes with React reconciliation if it has dynamic siblings. The menu is wrapped in a dedicated empty `.bubble-menu-host` div so the detachment never disturbs sibling reconciliation.
+- [`CHANGELOG.md`](./CHANGELOG.md) — notable changes per release
+- [`BUILDING.md`](./BUILDING.md) — build, signing and release guide for both apps
+- [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md) — the rewrite plan, its status, and the code review that led to it
+- [`docs/electron.md`](./docs/electron.md) — the Electron app: features, scripts, releases and architecture notes
+- [`docs/architecture.md`](./docs/architecture.md) — the original goals and the Electron design
+- [`ROADMAP.md`](./ROADMAP.md) — known gaps in the Electron app and planned work
+- [`windowsInstructions.md`](./windowsInstructions.md) — signing and shipping the Windows build
+
+## Sibling repositories
+
+- [Heracles](https://github.com/tacticalbadger/Heracles) — this repository: the native Mac app, and the Electron app's macOS build.
+- [Heracles-Windows](https://github.com/tacticalbadger/Heracles-Windows) — the Windows build of the Electron app.
+
+The two repositories share the Electron code and its git history. A change to that code, and to its documentation, belongs in both: commit to one, then merge or cherry-pick into the other. Platform packaging and signing stay in their own repository. The native app is in this repository only.
 
 ## License
 

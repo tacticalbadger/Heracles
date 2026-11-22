@@ -1,5 +1,9 @@
 # Roadmap
 
+> This roadmap was written for the Electron app. Several of its gaps are
+> closed in the native Mac app, whose own status is in
+> [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md#rewrite-status).
+
 Reconstructed 2026-08-19 after the previous roadmap was lost. Sources: the goals
 in [`docs/architecture.md`](./docs/architecture.md), the current state of the
 code, and issues found during a full code review (fixed items are recorded in

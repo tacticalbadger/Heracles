@@ -1,5 +1,9 @@
 # Notebook App Architecture Notes
 
+> These notes describe the Electron app, where Heracles started. The native
+> Mac app that replaces it is described in the [README](../README.md) and in
+> [review-and-native-rewrite.md](./review-and-native-rewrite.md).
+
 This document captures the current product goals and the chosen technical stack for the
 Notion-like, multi-pane notebook application.
 

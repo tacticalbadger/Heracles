@@ -1,8 +1,11 @@
 # Building Heracles
 
-This document covers how to compile Heracles into a distributable application
-for **macOS** and **Windows**. For day-to-day development setup see
-[`README.md`](./README.md).
+Heracles is two apps in one repository. The native Mac app, in Swift over a
+Rust core, is the one being developed: see
+[Building the native Mac app](#building-the-native-mac-app-in-progress). The
+rest of this document covers the Electron app it replaces, which still builds
+for **macOS** and **Windows**. For that app's day-to-day development setup see
+[`docs/electron.md`](./docs/electron.md).
 
 ---
 
@@ -289,8 +292,8 @@ canonical reference.
 ## Distribution
 
 Distributable builds are **signed and published to a Cloudflare R2 bucket**, and
-the app **auto-updates** from it via `electron-updater`. See the README's
-[Releases & auto-update](./README.md#releases--auto-update) section for the
+the app **auto-updates** from it via `electron-updater`. See the
+[Releases & auto-update](./docs/electron.md#releases--auto-update) section for the
 end-to-end flow: bump version → build → `npm run release:upload`.
 
 `release:upload` (`scripts/upload-release.cjs`) discovers the current version's

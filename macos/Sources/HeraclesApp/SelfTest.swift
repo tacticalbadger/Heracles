@@ -139,8 +139,28 @@ public enum SelfTest {
             check("self-test ran to completion (\(error))", false)
         }
 
+        // The build script puts the icon into the bundle, so only a built
+        // app can be asked for it.
+        if Bundle.main.bundleURL.pathExtension == "app" {
+            check("the app carries its icon", appIconIsPresent())
+        }
+
         print(failures == 0 ? "\nSELF-TEST PASSED" : "\nSELF-TEST FAILED (\(failures))")
         return failures == 0
+    }
+
+    /// Whether the bundle holds both forms of its icon: the layered one in
+    /// the asset archive, which macOS 26 and later draw in their light, dark,
+    /// clear and tinted styles, and the plain icon file for everything else.
+    private static func appIconIsPresent() -> Bool {
+        guard let name = Bundle.main.object(forInfoDictionaryKey: "CFBundleIconName") as? String,
+            let file = Bundle.main.object(forInfoDictionaryKey: "CFBundleIconFile") as? String,
+            Bundle.main.url(forResource: "Assets", withExtension: "car") != nil,
+            let plain = Bundle.main.url(forResource: file, withExtension: "icns"),
+            NSImage(contentsOf: plain)?.isValid == true,
+            let layered = NSImage(named: name)
+        else { return false }
+        return layered.isValid
     }
 
     /// A real picture, small: a 4 by 4 blue square as PNG.

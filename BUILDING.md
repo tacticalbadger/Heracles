@@ -138,6 +138,30 @@ and exits 0 if all pass.
 with a sample note that has one of every kind of block, into PNG files. It is
 a way to look at the interface from a script.
 
+### The app icon
+
+The icon's source is `macos/Icon/Heracles.icon`, an Icon Composer document:
+a background, and the letter as an SVG layer over it, each with its colours
+for the light and the dark style. Open it in Icon Composer, which comes with
+Xcode, or edit `icon.json` and `Assets/H.svg` by hand. Then compile it:
+
+```bash
+macos/make-icon.sh
+```
+
+This needs Xcode 26 or later. It writes three files into `macos/Icon/`. All
+three are kept in the repository, so building the app does not need the
+script.
+
+| File | What it is |
+| --- | --- |
+| `Assets.car` | The layered icon, which macOS 26 and later draw in their light, dark, clear and tinted styles. It also holds pictures of the icon for macOS 14 and 15. |
+| `Heracles.icns` | The plain icon file, for whatever still asks for one |
+| `Heracles.png` | A picture of the icon, shown in the README |
+
+`build-app.sh` copies the first two into the app, and `--self-test` checks
+that they arrived.
+
 ### Releasing the native app
 
 ```bash

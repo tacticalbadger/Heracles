@@ -8,6 +8,12 @@
   <string>Heracles</string>
   <key>CFBundleExecutable</key>
   <string>Heracles</string>
+  <!-- The icon, which build-app.sh copies into Resources from macos/Icon/:
+       by name from Assets.car, and Heracles.icns as the plain file. -->
+  <key>CFBundleIconName</key>
+  <string>Heracles</string>
+  <key>CFBundleIconFile</key>
+  <string>Heracles</string>
   <!-- Not the Electron app's id (com.heracles.notes), so the two can be
        installed side by side while the native app is being built. -->
   <key>CFBundleIdentifier</key>
@@ -17,7 +23,7 @@
   <key>CFBundleShortVersionString</key>
   <string>0.3.1</string>
   <key>CFBundleVersion</key>
-  <string>4</string>
+  <string>5</string>
   <key>LSMinimumSystemVersion</key>
   <string>14.0</string>
   <key>LSApplicationCategoryType</key>

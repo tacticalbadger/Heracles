@@ -34,6 +34,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp macos/Info.plist "$APP/Contents/Info.plist"
 cp "$PRODUCTS/Heracles" "$APP/Contents/MacOS/Heracles"
+# The icon, compiled by macos/make-icon.sh and kept in the repository.
+cp macos/Icon/Assets.car macos/Icon/Heracles.icns "$APP/Contents/Resources/"
 codesign --force --sign - "$APP" >/dev/null 2>&1
 
 echo "Built $APP"

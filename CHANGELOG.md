@@ -177,6 +177,11 @@ open it, and drag Heracles onto the Applications folder beside it.
   `Heracles-<version>-mac.dmg`: the app beside a link to the Applications
   folder. The image is signed, notarized and stapled, as the app in it is.
   The zip of the same app is still published beside it.
+- **An app icon**, in build 5 of this version and later: an H made of two
+  columns, cream on terracotta. It is a layered icon, so macOS 26 and later
+  draw it in each of their icon styles, where the dark one is terracotta on
+  black. Earlier versions of macOS show the light one. Its source is
+  `macos/Icon/Heracles.icon`, compiled by `macos/make-icon.sh`.
 
 ## [0.3.0] - 2026-11-22
 

@@ -1,5 +1,7 @@
 # Heracles
 
+<img src="macos/Icon/Heracles.png" width="128" alt="The Heracles app icon: an H made of two columns">
+
 A local-first, hierarchical notebook for macOS: pages in notebooks, a block editor, split panes and kanban boards. Everything is stored on your Mac in one SQLite database.
 
 Heracles is a native Mac app, written in Swift over a Rust core. It replaces the Electron app this project started as. That app is still in the repository and is described in [`docs/electron.md`](./docs/electron.md).
@@ -75,6 +77,8 @@ macos/                     The Mac app (Swift)
 ├── build-app.sh           Builds build/Heracles.app
 ├── build-core.sh          Builds the core and its Swift bindings
 ├── release.sh             Signs and notarizes a build, and makes its disk image
+├── make-icon.sh           Compiles the app icon after a change to it
+├── Icon/                  The app icon: its source and its compiled forms
 ├── Sources/HeraclesCore/  Generated bindings to the core
 ├── Sources/HeraclesApp/   Model, sidebar, panes, board
 │   └── Editor/            The block editor: document model, text views, page

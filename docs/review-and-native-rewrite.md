@@ -258,6 +258,9 @@ updates itself.
 - Reminders scheduled through `UNUserNotificationCenter`.
 - Import of Markdown and HTML files, and Markdown export.
 - Quick Open (⌘K), icon picker, and a menu bar with a Format menu.
+- An app icon: an H made of two columns. It is a layered Icon Composer
+  icon, which macOS 26 and later draw in their light, dark, clear and
+  tinted styles.
 - Multiple windows on one shared model.
 - `heracles://note/<id>` links, with `#block=<id>` to scroll to a block.
 - `macos/release.sh`: universal build, Developer ID signing under the
@@ -388,6 +391,10 @@ These were made to keep moving. Each is easy to change now and harder later.
   languages that compose characters, and the Edit menu's own Undo item, as
   opposed to ⌘Z. Outside the editor: dragging tabs, dividers and cards,
   reminders arriving, and the open and save panels.
+- The icon was looked at as macOS 27 draws it in the dark style, at every
+  size, and as Icon Composer renders the other styles. It has not been seen
+  on macOS 14 or 15, where the system shows pictures that Xcode made from
+  the same source.
 - The editor's tests for the views were written after the views. The
   document model was written test first.
 - Findings marked **read** above were not reproduced in the Electron app

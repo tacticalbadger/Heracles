@@ -1,6 +1,7 @@
 #!/bin/sh
-# Build Heracles.app for distribution: universal, signed with the Developer
-# ID certificate under the hardened runtime, notarized by Apple, and stapled.
+# Build Heracles for distribution: a universal app, signed with the Developer
+# ID certificate under the hardened runtime, notarized by Apple and stapled,
+# in a disk image that is signed, notarized and stapled as well.
 #
 # Usage: macos/release.sh [--skip-notarize]
 #   --skip-notarize   stop after signing. For checking a signed build locally.
@@ -21,7 +22,11 @@
 #   - or NOTARY_PROFILE, the name of a profile saved once with
 #       xcrun notarytool store-credentials <name> ...
 #
-# Produces build/Heracles.app and build/Heracles-<version>-mac.zip.
+# Produces, in build/:
+#   Heracles.app                 the app
+#   Heracles-<version>-mac.dmg   the disk image people download: the app
+#                                beside a link to the Applications folder
+#   Heracles-<version>-mac.zip   the same app, zipped
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -60,6 +65,27 @@ macos/build-app.sh
 APP=build/Heracles.app
 VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
 ZIP=build/Heracles-$VERSION-mac.zip
+DMG=build/Heracles-$VERSION-mac.dmg
+
+STAGE=$(mktemp -d)
+trap 'rm -rf "$STAGE"' EXIT
+
+make_zip() {
+    rm -f "$ZIP"
+    ditto -c -k --keepParent "$APP" "$ZIP"
+}
+
+# The disk image holds the app beside a link to the Applications folder, so
+# installing is one drag. It is signed, which lets macOS tell who made it.
+make_dmg() {
+    rm -rf "$STAGE/Heracles.app" "$STAGE/Applications" "$DMG"
+    ditto "$APP" "$STAGE/Heracles.app"
+    ln -s /Applications "$STAGE/Applications"
+    hdiutil create -quiet -volname Heracles -srcfolder "$STAGE" -fs HFS+ -format UDZO "$DMG"
+    hdiutil verify -quiet "$DMG"
+    codesign --force --timestamp --sign "$IDENTITY" "$DMG"
+    codesign --verify --strict --verbose=2 "$DMG"
+}
 
 echo "==> Signing as $IDENTITY"
 # The hardened runtime with no exceptions: the app loads no unsigned code and
@@ -76,23 +102,32 @@ echo "==> Checking the signed app"
     exit 1
 }
 
-rm -f "$ZIP"
-ditto -c -k --keepParent "$APP" "$ZIP"
+make_zip
 
 if [ "$NOTARIZE" = no ]; then
-    echo "Signed, not notarized: $APP"
+    make_dmg
+    echo "Signed, not notarized: $DMG and $ZIP"
     exit 0
 fi
 
-echo "==> Notarizing (this waits for Apple, usually a few minutes)"
+echo "==> Notarizing the app (this waits for Apple, usually a few minutes)"
 xcrun notarytool submit "$ZIP" "$@" --wait
 
-echo "==> Stapling"
+echo "==> Stapling the app"
 xcrun stapler staple "$APP"
 # The zip is made again so that it holds the stapled app, which opens on a
 # Mac that is offline.
-rm -f "$ZIP"
-ditto -c -k --keepParent "$APP" "$ZIP"
+make_zip
+
+# The image is made from the stapled app and then notarized in its own
+# right, so both the image and the app in it carry a ticket.
+echo "==> Notarizing the disk image"
+make_dmg
+xcrun notarytool submit "$DMG" "$@" --wait
+
+echo "==> Stapling the disk image"
+xcrun stapler staple "$DMG"
 
 spctl --assess --type execute --verbose=2 "$APP"
-echo "Ready to distribute: $ZIP"
+spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
+echo "Ready to distribute: $DMG and $ZIP"

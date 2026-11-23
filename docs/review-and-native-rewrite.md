@@ -214,9 +214,9 @@ foreign keys. It writes a backup first, as the notebook migration does today.
 
 ## Rewrite status
 
-Updated 2026-11-22. Version 0.3.0 of the native app is published as a
-preview on the GitHub releases page, signed and notarized, with the native
-editor (option A). The Electron app is unchanged and is still the one that
+Updated 2026-11-23. Version 0.3.1 of the native app is published as a
+preview on the GitHub releases page, as a signed and notarized disk image,
+with the native editor (option A). The Electron app is unchanged and is still the one that
 updates itself.
 
 ### Built
@@ -261,7 +261,8 @@ updates itself.
 - Multiple windows on one shared model.
 - `heracles://note/<id>` links, with `#block=<id>` to scroll to a block.
 - `macos/release.sh`: universal build, Developer ID signing under the
-  hardened runtime, notarization, stapling.
+  hardened runtime, notarization, stapling, and a disk image that is signed
+  and notarized in its own right.
 
 ### Open findings this removes
 
@@ -337,7 +338,8 @@ These were made to keep moving. Each is easy to change now and harder later.
   `backups/`.
 - **SwiftPM builds the app**, and scripts assemble and sign the bundle. The
   plan's `xcodebuild archive` flow is not used.
-- **The release is a zip.** There is no DMG yet.
+- **The release is a plain disk image**, with a zip of the same app beside
+  it. The image has no background picture or arranged icons.
 - **Export writes the note's content, not its title.** The file name carries
   the title, as it does on import, so an export imports back as it was.
 - **A new note goes inside the open note**, as in the Electron app.
@@ -365,9 +367,13 @@ These were made to keep moving. Each is easy to change now and harder later.
 ### Not verified
 
 - 0.2.1 was published without notarization, and stays that way: macOS
-  refuses to open a downloaded copy of it the first time. 0.3.0 is
-  notarized: Apple accepted it, the ticket is stapled, and Gatekeeper passes
-  the app taken back out of its zip.
+  refuses to open a downloaded copy of it the first time. 0.3.0 and 0.3.1
+  are notarized: Apple accepted them, the tickets are stapled, and Gatekeeper
+  passes the app taken back out of its zip.
+- 0.3.1's disk image is notarized and stapled as well, and Gatekeeper passes
+  both the image and the app copied out of it. That was checked from a
+  script, on a copy of the image marked the way macOS marks a download.
+  Nobody has yet opened the image by hand and dragged the app across.
 - The importer has only been run on databases built by its tests. No real
   Electron library was on the machine it was written on. Try it first with
   `HERACLES_DATA_DIR` pointing at a copy.

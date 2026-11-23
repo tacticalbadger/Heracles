@@ -6,7 +6,7 @@ Heracles is a native Mac app, written in Swift over a Rust core. It replaces the
 
 ## Status and download
 
-The native app is a preview. The latest build is on the [releases page](https://github.com/tacticalbadger/Heracles/releases): a universal app for macOS 14 or later.
+The native app is a preview. The latest build is on the [releases page](https://github.com/tacticalbadger/Heracles/releases): a universal app for macOS 14 or later. Download the `.dmg`, open it, and drag Heracles onto the Applications folder beside it.
 
 - The build is signed with a Developer ID certificate and notarized by Apple, so it opens like any other downloaded app.
 - It does not update itself yet. To install a newer version, replace the app.
@@ -74,7 +74,7 @@ core/                      heracles-core: the app's data layer (Rust)
 macos/                     The Mac app (Swift)
 ├── build-app.sh           Builds build/Heracles.app
 ├── build-core.sh          Builds the core and its Swift bindings
-├── release.sh             Signs, notarizes and staples a build to distribute
+├── release.sh             Signs and notarizes a build, and makes its disk image
 ├── Sources/HeraclesCore/  Generated bindings to the core
 ├── Sources/HeraclesApp/   Model, sidebar, panes, board
 │   └── Editor/            The block editor: document model, text views, page

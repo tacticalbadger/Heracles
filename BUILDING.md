@@ -92,7 +92,7 @@ npx electron-builder install-app-deps
 ## Building the native Mac app (in progress)
 
 The Swift + Rust rewrite lives beside the Electron app and builds separately.
-Version 0.3.0 is its current preview release. For what works and what has not been checked, see the status section of
+Version 0.3.1 is its current preview release. For what works and what has not been checked, see the status section of
 [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
 
 You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`
@@ -141,14 +141,24 @@ a way to look at the interface from a script.
 ### Releasing the native app
 
 ```bash
-macos/release.sh                  # build, sign, notarize, staple
+macos/release.sh                  # build, sign, notarize, staple, make the disk image
 macos/release.sh --skip-notarize  # stop after signing
 ```
 
 This builds the universal app, signs it with the Developer ID certificate
 under the hardened runtime, runs the signed app's self-test, has Apple
-notarize it, and staples the ticket. The result is `build/Heracles.app` and
-`build/Heracles-<version>-mac.zip`.
+notarize it, and staples the ticket. It then puts the app in a disk image
+beside a link to the Applications folder, signs the image, and has Apple
+notarize that too. The result, in `build/`:
+
+| File | What it is |
+| --- | --- |
+| `Heracles.app` | The app |
+| `Heracles-<version>-mac.dmg` | The disk image people download |
+| `Heracles-<version>-mac.zip` | The same app, zipped |
+
+The image is a plain one: it opens as a window with the app and the
+Applications folder in it, with no background picture or arranged icons.
 
 The app needs no hardened-runtime exceptions and has no entitlements file.
 It is one executable with the Rust core linked into it, and it runs no
@@ -186,7 +196,8 @@ To publish a version:
 2. Run `macos/release.sh`.
 3. Tag the commit `v<version>` and push the tag.
 4. On GitHub, create the release for that tag **as a draft**, attach
-   `build/Heracles-<version>-mac.zip`, and only then publish it.
+   `build/Heracles-<version>-mac.dmg` and `build/Heracles-<version>-mac.zip`,
+   and only then publish it.
 
 The order in step 4 matters. This repository has immutable releases turned
 on: once a release is published, files cannot be added to it, replaced or
@@ -199,7 +210,8 @@ installed by replacing the app.
 
 Version 0.2.1 was published signed and not notarized, because no notary
 credentials were at hand, and its download cannot be replaced. Builds from
-0.3.0 on are notarized.
+0.3.0 on are notarized, and from 0.3.1 on they come as a disk image as well
+as a zip.
 
 ### Trying it without touching your library
 

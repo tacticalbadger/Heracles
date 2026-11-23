@@ -164,6 +164,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New IPC: `notes.importMarkdown()` and `notes.importHtml()` open native
   multi-select file dialogs and return file names + contents.
 
+## [0.3.1] - 2026-11-23
+
+The native Mac app as a disk image. The app itself is the same as 0.3.0.
+Download `Heracles-0.3.1-mac.dmg` from the
+[release page](https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.1),
+open it, and drag Heracles onto the Applications folder beside it.
+
+### Added
+
+- **A disk image download.** `macos/release.sh` now also makes
+  `Heracles-<version>-mac.dmg`: the app beside a link to the Applications
+  folder. The image is signed, notarized and stapled, as the app in it is.
+  The zip of the same app is still published beside it.
+
 ## [0.3.0] - 2026-11-22
 
 The native Mac app's second preview. The editor is now native, and the
@@ -309,6 +323,7 @@ the same app with the download attached.
   boundary.
 
 [Unreleased]: https://github.com/
+[0.3.1]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.1
 [0.3.0]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.0
 [0.2.1]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.1
 [0.2.0]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.0

@@ -92,7 +92,7 @@ npx electron-builder install-app-deps
 ## Building the native Mac app (in progress)
 
 The Swift + Rust rewrite lives beside the Electron app and builds separately.
-Version 0.3.1 is its current preview release. For what works and what has not been checked, see the status section of
+Version 0.3.2 is its current preview release. For what works and what has not been checked, see the status section of
 [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
 
 You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`

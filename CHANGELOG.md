@@ -164,6 +164,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New IPC: `notes.importMarkdown()` and `notes.importHtml()` open native
   multi-select file dialogs and return file names + contents.
 
+## [0.3.2] - 2026-11-23
+
+The native Mac app gets an icon. Nothing else in the app has changed since
+0.3.0. Download `Heracles-0.3.2-mac.dmg` from the
+[release page](https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.2),
+open it, and drag Heracles onto the Applications folder beside it.
+
+### Added
+
+- **An app icon**: an H made of two columns, cream on terracotta. It is a
+  layered icon, so macOS 26 and later draw it in each of their icon styles,
+  where the dark one is terracotta on black. Earlier versions of macOS show
+  the light one. Its source is `macos/Icon/Heracles.icon`, compiled by
+  `macos/make-icon.sh`.
+
 ## [0.3.1] - 2026-11-23
 
 The native Mac app as a disk image. The app itself is the same as 0.3.0.
@@ -177,11 +192,6 @@ open it, and drag Heracles onto the Applications folder beside it.
   `Heracles-<version>-mac.dmg`: the app beside a link to the Applications
   folder. The image is signed, notarized and stapled, as the app in it is.
   The zip of the same app is still published beside it.
-- **An app icon**, in build 5 of this version and later: an H made of two
-  columns, cream on terracotta. It is a layered icon, so macOS 26 and later
-  draw it in each of their icon styles, where the dark one is terracotta on
-  black. Earlier versions of macOS show the light one. Its source is
-  `macos/Icon/Heracles.icon`, compiled by `macos/make-icon.sh`.
 
 ## [0.3.0] - 2026-11-22
 
@@ -328,6 +338,7 @@ the same app with the download attached.
   boundary.
 
 [Unreleased]: https://github.com/
+[0.3.2]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.2
 [0.3.1]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.1
 [0.3.0]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.0
 [0.2.1]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.2.1

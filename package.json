@@ -2,6 +2,7 @@
   "name": "heracles",
   "version": "0.1.0",
   "private": true,
+  "license": "UNLICENSED",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "concurrently -k \"vite --config vite.config.ts\" \"wait-on http://localhost:5173 && electron .\"",

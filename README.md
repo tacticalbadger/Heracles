@@ -124,4 +124,6 @@ The two repositories share the Electron code and its git history. A change to th
 
 ## License
 
-See `LICENSE`.
+Heracles is proprietary software, not open source. Copyright © 2026 tacticalbadger. All rights reserved.
+
+The source is public so that it can be read. You may download and run the released app. Copying, changing or redistributing the code or the app needs written permission. The terms are in [`LICENSE`](./LICENSE).

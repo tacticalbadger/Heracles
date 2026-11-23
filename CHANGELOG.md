@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **License** — Heracles is now proprietary software: all rights reserved, with
+  permission only to run the released app. The terms are in `LICENSE`.
 - The single hard-coded "Private" sidebar section is replaced by user-created
   notebooks. Every page/section/todo now lives inside a notebook; a one-time
   migration creates a default **"Notebook"**, adopts all existing top-level

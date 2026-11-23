@@ -1,6 +1,6 @@
 # Heracles
 
-<img src="macos/Icon/Heracles.png" width="128" alt="The Heracles app icon: an H made of two columns">
+<img src="macos/Icon/Heracles.png" width="128" alt="The Heracles app icon: a notebook page with a heading, a checklist and lines of text">
 
 A local-first, hierarchical notebook for macOS: pages in notebooks, a block editor, split panes and kanban boards. Everything is stored on your Mac in one SQLite database.
 

@@ -164,6 +164,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New IPC: `notes.importMarkdown()` and `notes.importHtml()` open native
   multi-select file dialogs and return file names + contents.
 
+## [0.3.3] - 2026-11-23
+
+The native Mac app with a new icon. Nothing else in the app has changed
+since 0.3.0. Download `Heracles-0.3.3-mac.dmg` from the
+[release page](https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.3),
+open it, and drag Heracles onto the Applications folder beside it.
+
+### Changed
+
+- **A new app icon that shows what the app is for**: a notebook page with a
+  heading, a ticked item, an empty one, and lines of text. It replaces the
+  letter H of 0.3.2. By default it is a cream page on terracotta, and in the
+  dark icon style of macOS 26 and later a terracotta page on black.
+
 ## [0.3.2] - 2026-11-23
 
 The native Mac app gets an icon. Nothing else in the app has changed since
@@ -338,6 +352,7 @@ the same app with the download attached.
   boundary.
 
 [Unreleased]: https://github.com/
+[0.3.3]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.3
 [0.3.2]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.2
 [0.3.1]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.1
 [0.3.0]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.0

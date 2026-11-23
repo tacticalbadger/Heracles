@@ -92,7 +92,7 @@ npx electron-builder install-app-deps
 ## Building the native Mac app (in progress)
 
 The Swift + Rust rewrite lives beside the Electron app and builds separately.
-Version 0.3.2 is its current preview release. For what works and what has not been checked, see the status section of
+Version 0.3.3 is its current preview release. For what works and what has not been checked, see the status section of
 [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
 
 You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`
@@ -140,10 +140,12 @@ a way to look at the interface from a script.
 
 ### The app icon
 
-The icon's source is `macos/Icon/Heracles.icon`, an Icon Composer document:
-a background, and the letter as an SVG layer over it, each with its colours
-for the light and the dark style. Open it in Icon Composer, which comes with
-Xcode, or edit `icon.json` and `Assets/H.svg` by hand. Then compile it:
+The icon is a notebook page with a heading, a checklist and lines of text.
+Its source is `macos/Icon/Heracles.icon`, an Icon Composer document: a
+background, the page, and what is written on the page, as SVG layers, each
+with its colours for the light and the dark style. Open it in Icon Composer,
+which comes with Xcode, or edit `icon.json` and the SVG files in `Assets/` by
+hand. Then compile it:
 
 ```bash
 macos/make-icon.sh

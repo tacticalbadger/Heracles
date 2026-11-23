@@ -214,7 +214,7 @@ foreign keys. It writes a backup first, as the notebook migration does today.
 
 ## Rewrite status
 
-Updated 2026-11-23. Version 0.3.2 of the native app is published as a
+Updated 2026-11-23. Version 0.3.3 of the native app is published as a
 preview on the GitHub releases page, as a signed and notarized disk image,
 with the native editor (option A). The Electron app is unchanged and is still the one that
 updates itself.
@@ -258,9 +258,9 @@ updates itself.
 - Reminders scheduled through `UNUserNotificationCenter`.
 - Import of Markdown and HTML files, and Markdown export.
 - Quick Open (⌘K), icon picker, and a menu bar with a Format menu.
-- An app icon: an H made of two columns. It is a layered Icon Composer
-  icon, which macOS 26 and later draw in their light, dark, clear and
-  tinted styles.
+- An app icon: a notebook page with a heading, a checklist and lines of
+  text. It is a layered Icon Composer icon, which macOS 26 and later draw in
+  their light, dark, clear and tinted styles.
 - Multiple windows on one shared model.
 - `heracles://note/<id>` links, with `#block=<id>` to scroll to a block.
 - `macos/release.sh`: universal build, Developer ID signing under the

@@ -3,9 +3,9 @@
 #
 # Usage: macos/make-icon.sh
 #
-# Heracles.icon is the icon's source: a background, and the letter as an SVG
-# layer over it, each with its colours for the light and the dark style. It
-# opens in Icon Composer, which comes with Xcode.
+# Heracles.icon is the icon's source: a background, a page, and what is
+# written on the page, as SVG layers, each with its colours for the light and
+# the dark style. It opens in Icon Composer, which comes with Xcode.
 #
 # This writes, into macos/Icon/:
 #   Assets.car     the layered icon, which macOS 26 and later draw in their

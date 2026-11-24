@@ -217,7 +217,8 @@ foreign keys. It writes a backup first, as the notebook migration does today.
 Updated 2026-11-24. Version 0.4.0 of the native app is the current preview
 on the GitHub releases page, as a signed and notarized disk image, with the
 native editor (option A). From this version on the native app updates
-itself. The Electron app is unchanged.
+itself. The Electron app is unchanged. 0.4.0 is build 7, published from
+commit `b5559c6` with its update feed attached.
 
 ### Built
 
@@ -421,14 +422,22 @@ These were made to keep moving. Each is easy to change now and harder later.
   the same source.
 - The editor's tests for the views were written after the views. The
   document model was written test first.
-- **Updates were rehearsed, not yet lived through.** `update-rehearsal.sh`
+- **Updates were rehearsed, and one was taken from the published feed, but
+  none yet from one published version to the next.** `update-rehearsal.sh`
   passed on a build signed ad hoc and on the notarized 0.4.0 build: an old
   copy replaced itself with a new one, an updated copy was offered nothing,
   a zip and a feed altered after signing were each refused for that reason,
   the same feed 21 days on got nothing downloaded, and a copy with a
-  library of its own did not look. Not checked, because it cannot be until
-  a second release exists: an update from one published version to the
-  next. The rehearsal reads the two menu items as the menu draws them
+  library of its own did not look. After 0.4.0 was published, the three
+  files were downloaded back and matched the local ones byte for byte, and
+  the address installed copies read served the feed that was built. Then a
+  copy of the release build, relabelled 0.3.9 with a bundle identifier and
+  a library of its own and the real update key in it, read the published
+  feed, found 0.4.0, downloaded the published zip and verified it. Once it
+  had quit, the copy on disk was file for file the app in the published
+  zip, its signature valid, its ticket stapled. Only the old copy's version
+  was made up. Not checked, because it cannot be until a second release
+  exists: an update from one published version to the next. The rehearsal reads the two menu items as the menu draws them
   (greyed out in a trial run, available and ticked otherwise), but nobody
   has clicked Check for Updates… or seen the update window. Also not
   checked: an update of a copy in a folder its user

@@ -10,6 +10,11 @@ let package = Package(
     products: [
         .library(name: "HeraclesCore", targets: ["HeraclesCore"]),
     ],
+    dependencies: [
+        // Over-the-air updates. A binary framework: build-app.sh copies it
+        // into the bundle and sign-app.sh signs what is inside it.
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
+    ],
     targets: [
         // heracles-core, the Rust static library, with its C header.
         .binaryTarget(name: "HeraclesCoreFFI", path: "Frameworks/HeraclesCoreFFI.xcframework"),
@@ -17,7 +22,9 @@ let package = Package(
         .target(name: "HeraclesCore", dependencies: ["HeraclesCoreFFI"]),
         .testTarget(name: "HeraclesCoreTests", dependencies: ["HeraclesCore"]),
         // Everything in the app except its entry point, so it can be tested.
-        .target(name: "HeraclesApp", dependencies: ["HeraclesCore"]),
+        .target(
+            name: "HeraclesApp",
+            dependencies: ["HeraclesCore", .product(name: "Sparkle", package: "Sparkle")]),
         .testTarget(name: "HeraclesAppTests", dependencies: ["HeraclesApp"]),
         .executableTarget(name: "Heracles", dependencies: ["HeraclesApp"]),
     ]

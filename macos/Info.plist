@@ -21,9 +21,12 @@
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.3.3</string>
+  <string>0.4.0</string>
+  <!-- The build number. Sparkle goes by this, not by the version above, to
+       tell whether an update is newer: raise it with every release.
+       release.sh stops if it is not higher than the published one. -->
   <key>CFBundleVersion</key>
-  <string>6</string>
+  <string>7</string>
   <key>LSMinimumSystemVersion</key>
   <string>14.0</string>
   <key>LSApplicationCategoryType</key>

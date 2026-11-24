@@ -122,7 +122,7 @@ were made along the way, and what is still to do.
 ### Decide first: Windows
 
 A Swift app runs on macOS only, and this codebase also ships as
-[Heracles-Windows](https://github.com/mattdobbs/Heracles-Windows). A Rust core
+[Heracles-Windows](https://github.com/tacticalbadger/Heracles-Windows). A Rust core
 could be shared with a Windows interface later. Until one exists, the Windows
 build either stays on Electron or stops receiving features.
 
@@ -214,10 +214,10 @@ foreign keys. It writes a backup first, as the notebook migration does today.
 
 ## Rewrite status
 
-Updated 2026-11-23. Version 0.3.3 of the native app is published as a
-preview on the GitHub releases page, as a signed and notarized disk image,
-with the native editor (option A). The Electron app is unchanged and is still the one that
-updates itself.
+Updated 2026-11-24. Version 0.4.0 of the native app is the current preview
+on the GitHub releases page, as a signed and notarized disk image, with the
+native editor (option A). From this version on the native app updates
+itself. The Electron app is unchanged.
 
 ### Built
 
@@ -244,7 +244,7 @@ updates itself.
   repair.
 - UniFFI bindings for Swift.
 
-**The app** (`macos/`, Swift, 246 tests via `swift test`, plus `--self-test`):
+**The app** (`macos/`, Swift, 255 tests via `swift test`, plus `--self-test`):
 
 - Sidebar with notebooks, nested notes, favorites, archive, trash, and search.
 - Panes and tabs: splits within splits, draggable dividers, tabs that move
@@ -263,9 +263,22 @@ updates itself.
   their light, dark, clear and tinted styles.
 - Multiple windows on one shared model.
 - `heracles://note/<id>` links, with `#block=<id>` to scroll to a block.
+- Updates over the air, through Sparkle 2.10.1. The app looks once a day
+  and from Heracles ▸ Check for Updates…, shows the release notes, and
+  installs when the user agrees. It takes an update only if the feed and
+  the archive are both signed with the update key. A run with a library
+  named in `HERACLES_DATA_DIR`, the self-test and the snapshot do not look.
 - `macos/release.sh`: universal build, Developer ID signing under the
-  hardened runtime, notarization, stapling, and a disk image that is signed
-  and notarized in its own right.
+  hardened runtime, notarization, stapling, a disk image that is signed
+  and notarized in its own right, and the signed update feed. It checks
+  every executable in the bundle, and stops when the build number has not
+  gone up.
+- `macos/publish.sh`: the GitHub release, as a draft until its files have
+  been read back, and refused when the feed, the zip and the notarization
+  do not belong together.
+- `macos/update-rehearsal.sh`: a whole update between two relabelled copies
+  of the build, with a key made for the run, and the updates that must be
+  refused.
 
 ### Open findings this removes
 
@@ -350,10 +363,20 @@ These were made to keep moving. Each is easy to change now and harder later.
   question is undecided.
 - **Windows is undecided.** Nothing here blocks sharing the core with a
   Windows interface.
+- **The update feed is a file on each GitHub release**, not on the R2
+  bucket the plan named. `releases/latest/download/appcast.xml` always
+  serves the newest release's copy, so there is no server and no second
+  set of credentials. The address is built into every copy from 0.4.0 on.
+- **Heracles has an update key of its own**, in the login keychain of the
+  Mac that makes releases. It is not the key the owner's other app uses.
+- **Release notes in the feed are Markdown.** Sparkle draws those in a text
+  view and HTML in a web view, and the app is to have no web view.
+- **The app is no longer a single executable.** Sparkle's framework and its
+  two helper programs are in the bundle. Its two XPC services, which are
+  for sandboxed apps, are left out. Nothing has an entitlement.
 
 ### Not built yet
 
-- Sparkle updates. A new version is installed by replacing the app.
 - Syntax coloring in code blocks. They are plain monospaced text with a
   language menu. The Electron app colors them as JavaScript whatever the
   language.
@@ -398,5 +421,20 @@ These were made to keep moving. Each is easy to change now and harder later.
   the same source.
 - The editor's tests for the views were written after the views. The
   document model was written test first.
+- **Updates were rehearsed, not yet lived through.** `update-rehearsal.sh`
+  passed on a build signed ad hoc and on the notarized 0.4.0 build: an old
+  copy replaced itself with a new one, an updated copy was offered nothing,
+  a zip and a feed altered after signing were each refused for that reason,
+  the same feed 21 days on got nothing downloaded, and a copy with a
+  library of its own did not look. Not checked, because it cannot be until
+  a second release exists: an update from one published version to the
+  next. Also not checked: Check for Updates… as a click, and the update
+  window as a person sees it; an update of a copy in a folder its user
+  cannot write to; an update on an Intel Mac, or on macOS 14 or 15; and
+  what happens to text typed in the moment before an update installs. The
+  install quits the app through its ordinary quit, which waits for every
+  editor to save, but the rehearsal stops its copies with a signal and so
+  never takes that path. The way back from a lost update key has not been
+  tried either.
 - Findings marked **read** above were not reproduced in the Electron app
   before being designed out.

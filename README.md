@@ -11,7 +11,8 @@ Heracles is a native Mac app, written in Swift over a Rust core. It replaces the
 The native app is a preview. The latest build is on the [releases page](https://github.com/tacticalbadger/Heracles/releases): a universal app for macOS 14 or later. Download the `.dmg`, open it, and drag Heracles onto the Applications folder beside it.
 
 - The build is signed with a Developer ID certificate and notarized by Apple, so it opens like any other downloaded app.
-- It does not update itself yet. To install a newer version, replace the app.
+- From 0.4.0 on it updates itself. It looks for a new version once a day and from **Heracles ▸ Check for Updates…**, shows what changed, and installs it when you agree. **Check for Updates Automatically** turns the daily look off. Keep the app in Applications for this to work.
+- Version 0.3.3 and earlier cannot update themselves. Install a current version by hand once, and later ones arrive in the app.
 - Nobody has used it day to day yet. It passes its automated tests, which cannot move a mouse.
 - The first time it starts, it copies an existing Electron library into its own database. See [Data storage](#data-storage).
 
@@ -76,7 +77,14 @@ core/                      heracles-core: the app's data layer (Rust)
 macos/                     The Mac app (Swift)
 ├── build-app.sh           Builds build/Heracles.app
 ├── build-core.sh          Builds the core and its Swift bindings
-├── release.sh             Signs and notarizes a build, and makes its disk image
+├── sign-app.sh            Signs the app and the updater inside it
+├── release.sh             Signs and notarizes a build, makes its disk image and its update feed
+├── publish.sh             Publishes a release on GitHub, feed included
+├── update-config.sh       Where updates come from and the key they are checked against
+├── update-rehearsal.sh    Rehearses a whole update on this Mac
+├── check-build-number.sh  Stops a release nobody would be offered
+├── verify-update.sh       Checks an update's signature against a key
+├── test-release-scripts.sh  Checks of the two scripts above
 ├── make-icon.sh           Compiles the app icon after a change to it
 ├── Icon/                  The app icon: its source and its compiled forms
 ├── Sources/HeraclesCore/  Generated bindings to the core

@@ -122,6 +122,9 @@ Made while building, each easy to change before 0.4.0 and hard after:
   archive's signature against the key in the built app.
 - `macos/build-core.sh`: source paths rewritten in the Rust library. The
   published 0.3.3 holds 150 strings under the build Mac's home folder.
+- `macos/check-build-number.sh` and `macos/verify-update.sh`: the two
+  safeguards the release scripts lean on, as scripts of their own so that
+  `macos/test-release-scripts.sh` can check them without a build.
 - `macos/publish.sh`: the draft-first release, refusing one without a
   feed written for exactly that archive.
 - `macos/update-rehearsal.sh`: a whole update between two relabelled

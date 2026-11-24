@@ -166,6 +166,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New IPC: `notes.importMarkdown()` and `notes.importHtml()` open native
   multi-select file dialogs and return file names + contents.
 
+## [0.4.0] - 2026-11-24
+
+The native Mac app updates itself from this version on. It is the last one
+to download by hand: get `Heracles-0.4.0-mac.dmg` from the
+[release page](https://github.com/tacticalbadger/Heracles/releases/tag/v0.4.0),
+open it, and drag Heracles onto the Applications folder beside it. Versions
+0.3.3 and earlier have no updater and cannot be told that this one exists.
+
+### Added
+
+- **Updates over the air.** The app looks for a new version once a day and
+  from **Heracles ▸ Check for Updates…**, shows what changed, and installs
+  it when you agree. Installing restarts the app, after every editor has
+  saved. **Heracles ▸ Check for Updates Automatically** turns the daily look
+  off. Keep the app in the Applications folder for this to work.
+- An update is installed only if it carries the developer's signature: the
+  feed that announces it and the archive itself are both checked against a
+  key built into the app, before anything is unpacked. A check sends the
+  app's version and the Mac's language setting, and nothing about your
+  notes.
+- The updater is [Sparkle](https://sparkle-project.org) 2.10.1, the app's
+  first dependency that is not built from this repository. Its window is a
+  native one. Release notes are written in Markdown, which it draws as
+  text, so the app still has no web view.
+- `macos/publish.sh` publishes a release on GitHub: as a draft first, with
+  the update feed attached, and only after checking that the feed, the zip
+  and the notarization all belong together. `macos/update-rehearsal.sh`
+  rehearses a whole update on one Mac, including the updates that must be
+  refused. [`BUILDING.md`](./BUILDING.md#releasing-the-native-app) has both.
+
+### Changed
+
+- `macos/release.sh` signs the zip with the update key, writes the feed,
+  and stops before building when the build number has not gone up. It finds
+  the signing certificate in the keychain; no name is written in the script.
+
+### Fixed
+
+- The app no longer contains file paths from the Mac it was built on.
+  Version 0.3.3 held 150 of them, left by the Rust compiler for its error
+  messages, each naming the build Mac's home folder.
+
 ## [0.3.3] - 2026-11-23
 
 The native Mac app with a new icon. Nothing else in the app has changed
@@ -354,6 +396,7 @@ the same app with the download attached.
   boundary.
 
 [Unreleased]: https://github.com/
+[0.4.0]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.4.0
 [0.3.3]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.3
 [0.3.2]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.2
 [0.3.1]: https://github.com/tacticalbadger/Heracles/releases/tag/v0.3.1

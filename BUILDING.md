@@ -21,7 +21,7 @@ for **macOS** and **Windows**. For that app's day-to-day development setup see
 Install dependencies once:
 
 ```bash
-git clone https://github.com/mattdobbs/Heracles.git
+git clone https://github.com/tacticalbadger/Heracles.git
 cd Heracles
 npm install
 ```
@@ -92,7 +92,7 @@ npx electron-builder install-app-deps
 ## Building the native Mac app (in progress)
 
 The Swift + Rust rewrite lives beside the Electron app and builds separately.
-Version 0.3.3 is its current preview release. For what works and what has not been checked, see the status section of
+Version 0.4.0 is its current preview release. For what works and what has not been checked, see the status section of
 [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
 
 You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`
@@ -113,6 +113,10 @@ The script runs two steps, which you can also run one at a time:
 
 Both outputs are git-ignored. After changing Rust code, run
 `macos/build-core.sh` again before building or testing the Swift package.
+
+The app has one dependency that is not built here: Sparkle, which installs
+updates. SwiftPM downloads it the first time, at the version pinned in
+`macos/Package.swift`, and `build-app.sh` copies it into the bundle.
 
 `build-app.sh` signs the app ad hoc, which runs on the Mac that built it. For
 a build to give to someone else, see [Releasing](#releasing-the-native-app).
@@ -137,6 +141,10 @@ and exits 0 if all pass.
 `Heracles --snapshot <folder>` draws the app's window and the editor, filled
 with a sample note that has one of every kind of block, into PNG files. It is
 a way to look at the interface from a script.
+
+Two more checks belong to releases and are described under
+[Releasing](#releasing-the-native-app): `macos/test-release-scripts.sh`
+and `macos/update-rehearsal.sh`.
 
 ### The app icon
 
@@ -167,28 +175,40 @@ that they arrived.
 ### Releasing the native app
 
 ```bash
-macos/release.sh                  # build, sign, notarize, staple, make the disk image
+macos/release.sh                  # build, sign, notarize, staple, make the disk image and the feed
 macos/release.sh --skip-notarize  # stop after signing
+macos/update-rehearsal.sh         # rehearse an update with the build just made
+macos/publish.sh --check          # every check before publishing, and nothing else
+macos/publish.sh                  # publish it on GitHub
 ```
 
-This builds the universal app, signs it with the Developer ID certificate
-under the hardened runtime, runs the signed app's self-test, has Apple
-notarize it, and staples the ticket. It then puts the app in a disk image
-beside a link to the Applications folder, signs the image, and has Apple
-notarize that too. The result, in `build/`:
+`release.sh` builds the universal app, signs it with the Developer ID
+certificate under the hardened runtime, runs the signed app's self-test, has
+Apple notarize it, and staples the ticket. It then puts the app in a disk
+image beside a link to the Applications folder, signs the image, and has
+Apple notarize that too. Last, it signs the zip with the update key and
+writes the update feed. The result, in `build/`:
 
 | File | What it is |
 | --- | --- |
 | `Heracles.app` | The app |
 | `Heracles-<version>-mac.dmg` | The disk image people download |
-| `Heracles-<version>-mac.zip` | The same app, zipped |
+| `Heracles-<version>-mac.zip` | The same app, zipped. Installed copies download this one when they update |
+| `appcast.xml` | The update feed: which version is the newest, where its zip is, and the signatures |
 
 The image is a plain one: it opens as a window with the app and the
 Applications folder in it, with no background picture or arranged icons.
 
 The app needs no hardened-runtime exceptions and has no entitlements file.
-It is one executable with the Rust core linked into it, and it runs no
-JavaScript.
+It is one executable with the Rust core linked into it, plus Sparkle's
+framework and its two helper programs, and it runs no JavaScript. The
+script checks every executable in the bundle for a secure timestamp, the
+hardened runtime, no entitlements, and no file path from the Mac it was
+built on.
+
+The signing certificate is found in the keychain: the first Developer ID
+Application certificate there. Set `CODESIGN_IDENTITY` to a name or a SHA-1
+to use a different one.
 
 Notarizing needs the same credentials as the Electron release:
 
@@ -212,32 +232,154 @@ Or save either kind once with `xcrun notarytool store-credentials heracles`
 and run `NOTARY_PROFILE=heracles macos/release.sh`.
 
 The script checks the credentials with Apple before it builds, so a missing
-or mistyped one fails at once. Set `CODESIGN_IDENTITY` to sign with a different certificate.
+or mistyped one fails at once.
 
 To publish a version:
 
-1. Set `CFBundleShortVersionString` in `macos/Info.plist` and add a section
-   for the version to `CHANGELOG.md`. The native app has its own version
-   number. `package.json` is the Electron app's.
-2. Run `macos/release.sh`.
-3. Tag the commit `v<version>` and push the tag.
-4. On GitHub, create the release for that tag **as a draft**, attach
-   `build/Heracles-<version>-mac.dmg` and `build/Heracles-<version>-mac.zip`,
-   and only then publish it.
+1. In `macos/Info.plist`, set `CFBundleShortVersionString` and raise
+   `CFBundleVersion`, the build number. Add a section for the version to
+   `CHANGELOG.md`, and write `docs/release-notes/<version>.md`: a few
+   Markdown bullets, which the update window shows and the release page
+   repeats. The native app has its own version number. `package.json` is
+   the Electron app's.
+2. Commit, and push the branch.
+3. Run `macos/release.sh`.
+4. Run `macos/update-rehearsal.sh`.
+5. Run `macos/publish.sh`. It needs the GitHub CLI, signed in.
 
-The order in step 4 matters. This repository has immutable releases turned
-on: once a release is published, files cannot be added to it, replaced or
-removed, and its tag name can never be used again, even if the release is
-deleted. 0.2.0 was published before its file was attached, which is why it
-has no download and the first preview is 0.2.1.
+The build number matters as much as the version. Sparkle compares build
+numbers to decide whether an update is newer, so a release that keeps the
+old number is never offered to anyone. `release.sh` reads the published
+feed first and stops if the number has not gone up.
 
-Updates are not set up: there is no Sparkle feed yet, so a new version is
-installed by replacing the app.
+`publish.sh` tags the commit, creates the release **as a draft**, attaches
+the disk image, the zip and the feed, reads their sizes and SHA-256 back
+from GitHub, and only then publishes the release as the latest one. The
+order matters. This repository has immutable releases turned on: once a
+release is published, files cannot be added to it, replaced or removed, and
+its tag name can never be used again, even if the release is deleted. 0.2.0
+was published before its file was attached, which is why it has no download
+and the first preview is 0.2.1.
+
+Before it tags anything, `publish.sh` refuses a build that is not notarized,
+a feed that was written for a different zip or build number, a zip whose
+signature does not verify against the update key, uncommitted changes, and
+a commit that is not on GitHub. Afterwards it checks that the address
+installed copies read serves the new feed.
 
 Version 0.2.1 was published signed and not notarized, because no notary
 credentials were at hand, and its download cannot be replaced. Builds from
 0.3.0 on are notarized, and from 0.3.1 on they come as a disk image as well
-as a zip.
+as a zip. From 0.4.0 on they come with a feed, and the app updates itself.
+
+#### Updates
+
+The app updates itself with [Sparkle](https://sparkle-project.org). Once a
+day, and from **Heracles ▸ Check for Updates…**, it reads
+
+```
+https://github.com/tacticalbadger/Heracles/releases/latest/download/appcast.xml
+```
+
+which GitHub serves from the newest release, so there is no server to run.
+If the feed names a build newer than the one running, the app shows the
+release notes and, when the user agrees, downloads the zip, checks it, and
+replaces itself when it quits. Quitting to install goes through the app's
+ordinary quit, which waits for every editor to save.
+
+Three things follow from that address being built into every copy:
+
+- **Every release must carry the feed, and must be the latest release.** A
+  release without `appcast.xml`, or one marked as a pre-release, stops
+  updates for everyone until the next good one, and nothing reports it.
+  `publish.sh` exists to make that mistake impossible.
+- **The repository cannot be renamed or moved** without first shipping a
+  build that knows the new address. Until then GitHub's redirect is all that
+  keeps installed copies updating.
+- **Versions before 0.4.0 have no updater.** They have to be replaced by
+  hand once.
+
+The release notes in the feed are Markdown, which Sparkle draws in a text
+view. It shows HTML notes in a web view, and the app has none, so
+`release.sh` refuses a feed whose notes are anything else.
+
+A run started for a trial or a test does not look for updates: a library
+named with `HERACLES_DATA_DIR`, `--self-test` and `--snapshot`. Otherwise a
+trial copy would be offered the published app.
+
+#### The update key
+
+An update is installed only if the feed and the zip both carry a signature
+made with the update key. Its public half is in `macos/update-config.sh` and
+so in every copy of the app. Its private half is in the login keychain of
+the Mac that makes releases, under the account `heracles-update-key`, and
+nowhere else: not in the repository and not in any file a script writes.
+Whoever controls the GitHub account can therefore withhold an update, and
+cannot supply one.
+
+Sparkle's tools manage the key. SwiftPM unpacks them into
+`macos/.build/artifacts/sparkle/Sparkle/bin`:
+
+```bash
+generate_keys --account heracles-update-key -p          # show the public half
+generate_keys --account heracles-update-key -x <file>   # write the private half to a file
+generate_keys --account heracles-update-key -f <file>   # take it from a file, on another Mac
+```
+
+- **Keep a copy of the private half somewhere safe**, such as a password
+  manager: export it with `-x`, store the file's contents, and delete the
+  file. If the key is lost, installed copies stop taking updates.
+- A second Mac cannot make a release until the key has been brought over
+  with `-x` and `-f`. `release.sh` compares the keychain's key with the one
+  in `update-config.sh` and stops on a difference. `HERACLES_UPDATE_KEY_FILE`
+  names a file that holds the key, for a Mac whose keychain should not.
+- The first time `release.sh` signs with the key on a Mac, macOS asks
+  whether `generate_appcast` may use it. Choose Always Allow, or an
+  unattended release waits on that question.
+- This is Heracles' own key. Toolbox, the owner's other app that updates
+  the same way, has a different one.
+
+Sparkle keeps two provisions for a developer who has lost the key, and they
+are part of what the key protects. A copy that has seen no properly signed
+feed for 20 days reads a badly signed one after all, with restrictions: no
+notes, no links, and nothing downloaded before the user agrees. And an
+archive that fails the key is still taken if the file itself is signed with
+the app's Developer ID, which a disk image can be and a zip cannot. So the
+Developer ID certificate's private key is a second key to updates, and
+deserves the same care. Both rules were read from Sparkle 2.10.1's source
+for Toolbox and are written up in that project's security review, in the
+addendum on updates over the air. Do not restate them from memory.
+
+#### Checking updates without a release
+
+```bash
+macos/test-release-scripts.sh   # a few seconds; no build needed
+macos/update-rehearsal.sh       # a few minutes; needs build/Heracles.app
+```
+
+`test-release-scripts.sh` checks the two safeguards that the release
+scripts lean on: that `verify-update.sh` accepts a file only with a
+signature made by the key it is given, and that `check-build-number.sh`
+stops a build number that has not gone up.
+
+`update-rehearsal.sh` rehearses a whole update with nothing real in it. It
+makes a key for the run, two copies of the current build that claim to be
+versions 9.9.1 and 9.9.2 under a bundle identifier of their own, a library
+in its work folder, and a feed served from this Mac. It passes only if:
+
+0. a copy with a library of its own and no feed named does not look at all;
+1. the old copy finds the new one, verifies it, and is the new version on
+   disk once it has quit;
+2. the updated copy is then offered nothing;
+3. a zip altered after signing is refused, for that reason;
+4. a feed altered after signing is refused, for that reason, with nothing
+   downloaded;
+5. the same feed, 21 days on, is read under Sparkle's 20-day rule and still
+   gets nothing downloaded.
+
+The copies start behind whatever is in front, though a window of theirs may
+show. The run touches neither the real update key nor GitHub nor the real
+library, and removes what its copies kept in `~/Library`.
 
 ### Trying it without touching your library
 
@@ -284,7 +426,7 @@ compiled against the Windows Electron ABI and Microsoft's C++ toolchain.
 **Build:**
 
 ```powershell
-git clone https://github.com/mattdobbs/Heracles.git
+git clone https://github.com/tacticalbadger/Heracles.git
 cd Heracles
 npm install
 npm run package:win

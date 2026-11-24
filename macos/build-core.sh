@@ -35,10 +35,17 @@ FRAMEWORK=macos/Frameworks/HeraclesCoreFFI.xcframework
 rm -rf "$WORK" "$FRAMEWORK" "$GENERATED"
 mkdir -p "$WORK/Headers" "$GENERATED" macos/Frameworks
 
+# The library that ships must not name this Mac. Rust records the source
+# path of every crate for panic messages, and those sit under the home
+# folder, so they are rewritten. rustc applies the last mapping that
+# matches, so the general one goes first. release.sh checks the result.
+CARGO_DIR=${CARGO_HOME:-$HOME/.cargo}
+LIBRARY_RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$HOME=/home --remap-path-prefix=$CARGO_DIR=/cargo --remap-path-prefix=$ROOT=/heracles"
+
 LIBRARIES=""
 for TARGET in $TARGETS; do
     echo "==> Building heracles-core for $TARGET"
-    cargo build --quiet --release --package heracles-core --target "$TARGET"
+    RUSTFLAGS="$LIBRARY_RUSTFLAGS" cargo build --quiet --release --package heracles-core --target "$TARGET"
     LIBRARIES="$LIBRARIES target/$TARGET/release/libheracles_core.a"
 done
 # shellcheck disable=SC2086  # the list is meant to split into arguments

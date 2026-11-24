@@ -24,7 +24,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Run from a bare executable, as `swift run` does, the process is not
         // a regular app until it says so.
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        // The update rehearsal starts copies of the app one after another
+        // and leaves them behind whatever is being worked in.
+        let rehearsal = CommandLine.arguments.contains("--demo-update")
+        if !rehearsal { NSApp.activate(ignoringOtherApps: true) }
 
         // Reminders are scheduled with the system, so they arrive whether or
         // not the app is running, and rescheduled whenever tasks change.
@@ -39,7 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // For the update rehearsal (macos/update-rehearsal.sh): look two
         // seconds after launch and not at the next scheduled time, and say
         // whether this run looks at all.
-        if CommandLine.arguments.contains("--demo-update") {
+        if rehearsal {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 Updates.log("looking for an update (active: \(Updates.shared.isActive))")
                 Updates.shared.checkInBackground()

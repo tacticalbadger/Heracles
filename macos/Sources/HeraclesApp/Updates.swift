@@ -173,14 +173,36 @@ final class Updates: NSObject, SPUUpdaterDelegate {
 /// Heracles ▸ Check for Updates… and Check for Updates Automatically.
 /// Views, so that the items follow the updater's state.
 struct UpdateMenuItems: View {
+    static let checkTitle = "Check for Updates…"
+    static let automaticTitle = "Check for Updates Automatically"
+
     var body: some View {
         let updates = Updates.shared
-        Button("Check for Updates…") { updates.checkForUpdates() }
+        Button(Self.checkTitle) { updates.checkForUpdates() }
             .disabled(!updates.canCheckForUpdates)
         Toggle(
-            "Check for Updates Automatically",
+            Self.automaticTitle,
             isOn: Binding(get: { updates.checksAutomatically }, set: { updates.checksAutomatically = $0 })
         )
         .disabled(!updates.isActive)
+    }
+
+    /// How the two items stand in the app menu, for the update rehearsal to
+    /// read: "<title>=on" or "=off", and ", ticked" where it is.
+    ///
+    /// SwiftUI draws a menu's items when the menu is about to open, not
+    /// when what they show changes, so the menu is told that first. Looked
+    /// at without it, the items are as they were at launch, before the
+    /// updater had started.
+    @MainActor
+    static func stateInMenu() -> String {
+        guard let menu = NSApp.mainMenu?.items.first?.submenu else { return "no app menu" }
+        menu.delegate?.menuNeedsUpdate?(menu)
+        menu.update()
+        return [checkTitle, automaticTitle].map { title in
+            guard let item = menu.items.first(where: { $0.title == title }) else { return "\(title)=missing" }
+            return "\(title)=\(item.isEnabled ? "on" : "off")\(item.state == .on ? ", ticked" : "")"
+        }
+        .joined(separator: "; ")
     }
 }

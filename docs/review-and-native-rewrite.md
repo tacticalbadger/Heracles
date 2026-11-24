@@ -428,8 +428,10 @@ These were made to keep moving. Each is easy to change now and harder later.
   the same feed 21 days on got nothing downloaded, and a copy with a
   library of its own did not look. Not checked, because it cannot be until
   a second release exists: an update from one published version to the
-  next. Also not checked: Check for Updates… as a click, and the update
-  window as a person sees it; an update of a copy in a folder its user
+  next. The rehearsal reads the two menu items as the menu draws them
+  (greyed out in a trial run, available and ticked otherwise), but nobody
+  has clicked Check for Updates… or seen the update window. Also not
+  checked: an update of a copy in a folder its user
   cannot write to; an update on an Intel Mac, or on macOS 14 or 15; and
   what happens to text typed in the moment before an update installs. The
   install quits the app through its ordinary quit, which waits for every

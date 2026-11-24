@@ -58,6 +58,29 @@ fail() {
 NOTARIZE=yes
 [ "${1:-}" = "--skip-notarize" ] && NOTARIZE=no
 
+# The update key signs the feed at the very end. Without it there is
+# nothing to publish, so that is found out first, not after the long build
+# and the wait for Apple.
+KEY_SOURCE=none
+if [ -n "${HERACLES_UPDATE_KEY_FILE:-}" ]; then
+    [ -r "$HERACLES_UPDATE_KEY_FILE" ] ||
+        fail "cannot read the update key file named in HERACLES_UPDATE_KEY_FILE ($HERACLES_UPDATE_KEY_FILE)"
+    KEY_SOURCE=file
+elif [ ! -x "$SPARKLE_BIN/generate_keys" ]; then
+    # A fresh checkout: SwiftPM unpacks Sparkle's tools with the first build.
+    KEY_SOURCE=unknown
+elif [ "$("$SPARKLE_BIN/generate_keys" --account "$UPDATE_KEY_ACCOUNT" -p 2>/dev/null || true)" = "$UPDATE_PUBLIC_KEY" ]; then
+    KEY_SOURCE=keychain
+fi
+missing_key() {
+    fail "the update key is not in this Mac's keychain (account $UPDATE_KEY_ACCOUNT), or is a different key.
+       Without it nobody's copy can be updated. Bring it over from the Mac that has it:
+         $SPARKLE_BIN/generate_keys --account $UPDATE_KEY_ACCOUNT -x <file>     there
+         $SPARKLE_BIN/generate_keys --account $UPDATE_KEY_ACCOUNT -f <file>     here
+       or set HERACLES_UPDATE_KEY_FILE to a file that holds it."
+}
+[ "$KEY_SOURCE" != none ] || [ "$NOTARIZE" = no ] || missing_key
+
 # A release nobody would be offered is stopped before the long build.
 VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
 NOTES=docs/release-notes/$VERSION.md
@@ -150,21 +173,21 @@ make_dmg() {
 # (publish.sh puts it there) and download the zip it names. Both are signed
 # here with the update key, and the app refuses either without it.
 write_feed() {
-    HAVE=$("$SPARKLE_BIN/generate_keys" --account "$UPDATE_KEY_ACCOUNT" -p 2>/dev/null || true)
-    if [ -n "${HERACLES_UPDATE_KEY_FILE:-}" ]; then
-        set -- --ed-key-file "$HERACLES_UPDATE_KEY_FILE"
-    elif [ "$HAVE" = "$UPDATE_PUBLIC_KEY" ]; then
-        set -- --account "$UPDATE_KEY_ACCOUNT"
-    elif [ "$NOTARIZE" = yes ]; then
-        fail "the update key is not in this Mac's keychain (account $UPDATE_KEY_ACCOUNT), or is a different key.
-       Without it nobody's copy can be updated. Bring it over from the Mac that has it:
-         $SPARKLE_BIN/generate_keys --account $UPDATE_KEY_ACCOUNT -x <file>     there
-         $SPARKLE_BIN/generate_keys --account $UPDATE_KEY_ACCOUNT -f <file>     here
-       or set HERACLES_UPDATE_KEY_FILE to a file that holds it."
-    else
-        echo "No update key on this Mac: no feed written. This build cannot be published."
-        return 0
+    # On a fresh checkout the tools were not there to ask before the build.
+    if [ "$KEY_SOURCE" = unknown ]; then
+        KEY_SOURCE=none
+        HAVE=$("$SPARKLE_BIN/generate_keys" --account "$UPDATE_KEY_ACCOUNT" -p 2>/dev/null || true)
+        [ "$HAVE" = "$UPDATE_PUBLIC_KEY" ] && KEY_SOURCE=keychain
     fi
+    case "$KEY_SOURCE" in
+        file) set -- --ed-key-file "$HERACLES_UPDATE_KEY_FILE" ;;
+        keychain) set -- --account "$UPDATE_KEY_ACCOUNT" ;;
+        *)
+            [ "$NOTARIZE" = no ] || missing_key
+            echo "No update key on this Mac: no feed written. This build cannot be published."
+            return 0
+            ;;
+    esac
 
     echo "==> Signing the update and writing the feed"
     mkdir "$STAGE/feed"

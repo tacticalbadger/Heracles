@@ -41,11 +41,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Updates.shared.start()
         // For the update rehearsal (macos/update-rehearsal.sh): look two
         // seconds after launch and not at the next scheduled time, and say
-        // whether this run looks at all.
+        // whether this run looks at all. Four seconds on, when a look at a
+        // feed on this Mac is long over, say how the menu's two items for
+        // updates stand.
         if rehearsal {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 Updates.log("looking for an update (active: \(Updates.shared.isActive))")
                 Updates.shared.checkInBackground()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                Updates.log("menu: \(UpdateMenuItems.stateInMenu())")
             }
         }
     }

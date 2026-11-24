@@ -12,9 +12,12 @@
 # It checks six things and exits non-zero unless all hold:
 #   0. A run with a library of its own and no feed named does not look for
 #      updates at all, so a trial copy is never offered the published app.
+#      Its two menu items for updates are greyed out.
 #   1. The old copy finds the new one in the feed, verifies it, and once it
 #      has quit, the copy on disk is the new version.
 #   2. That copy, now the new version, finds nothing newer in the same feed.
+#      Its Check for Updates… item can be chosen, and Check for Updates
+#      Automatically is ticked.
 #   3. With the archive altered after it was signed, nothing is installed
 #      and the app says why.
 #   4. The same with the feed altered after it was signed.
@@ -199,6 +202,11 @@ launch() {
     -SUEnableAutomaticChecks YES -SUAutomaticallyUpdate YES
 }
 said() { grep -Eq "$1" "$2"; }
+# The app writes down how its two menu items for updates stand once the
+# app menu has been told it is about to open, which is when they are drawn.
+menu_says() { grep -Fq "updates: menu: $1" "$2"; }
+MENU_OFF="Check for Updates…=off; Check for Updates Automatically=off"
+MENU_ON="Check for Updates…=on; Check for Updates Automatically=on, ticked"
 shown() { grep 'updates: ' "$1" | sed -E 's/^.*updates: /  app: /' || true; }
 
 RESULT=0
@@ -208,8 +216,7 @@ step "0. A copy with a library of its own and no feed named"
 make_copy "$WORK/trial" "$OLD_VERSION" "$OLD_BUILD"
 REQUESTS_BEFORE="$(grep -c 'GET ' "$WORK/server.log" || true)"
 launch "$WORK/trial" "" "$WORK/trial.log"
-wait_for 30 said "updates: looking for an update" "$WORK/trial.log" || true
-sleep 5   # as long as a check would have needed
+wait_for 30 said "updates: menu: " "$WORK/trial.log" || true
 shown "$WORK/trial.log"
 stop "$WORK/trial/Heracles.app"
 if said "updates: looking for an update \(active: false\)" "$WORK/trial.log" \
@@ -218,6 +225,12 @@ if said "updates: looking for an update \(active: false\)" "$WORK/trial.log" \
   echo "PASS: the updater did not start, and nothing was asked of any feed"
 else
   echo "FAIL: a run with a library of its own looked for updates, or never said whether it does"
+  RESULT=1
+fi
+if menu_says "$MENU_OFF" "$WORK/trial.log"; then
+  echo "PASS: its two menu items for updates are greyed out"
+else
+  echo "FAIL: its menu items for updates are not both greyed out, or the app never said how they stand"
   RESULT=1
 fi
 
@@ -250,13 +263,19 @@ step "2. The updated copy looks at the same feed"
 if has_version "$WORK/old/Heracles.app" "$NEW_VERSION"; then
   launch "$WORK/old" "$WORK/feed" "$WORK/updated.log"
   wait_for 60 said "updates: (nothing newer|stopped|found)" "$WORK/updated.log" || true
-  sleep 1
+  wait_for 30 said "updates: menu: " "$WORK/updated.log" || true
   shown "$WORK/updated.log"
   stop "$WORK/old/Heracles.app"
   if said "updates: nothing newer in the feed" "$WORK/updated.log" && ! said "updates: found" "$WORK/updated.log"; then
     echo "PASS: nothing is offered to a copy that is already $NEW_VERSION"
   else
     echo "FAIL: the updated copy did not report that nothing newer is in the feed"
+    RESULT=1
+  fi
+  if menu_says "$MENU_ON" "$WORK/updated.log"; then
+    echo "PASS: Check for Updates… can be chosen, and Check for Updates Automatically is ticked"
+  else
+    echo "FAIL: the menu items for updates do not follow the updater, or the app never said how they stand"
     RESULT=1
   fi
 else

@@ -9,6 +9,8 @@
 #                           by the key it is given
 #   check-build-number.sh   stops a release whose build number is not
 #                           higher than the one in the published feed
+#   release.sh              stops before building when the update key is
+#                           not to be had
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -110,6 +112,15 @@ expect "a feed whose build number is not a number cannot be judged" 3 macos/chec
 : >"$WORK/feed.xml"
 expect "an empty feed cannot be judged" 3 macos/check-build-number.sh "$WORK/feed.xml"
 expect "a feed file that is not there cannot be judged" 3 macos/check-build-number.sh "$WORK/missing.xml"
+
+echo "== release.sh"
+# Without the update key there is nothing to publish, and that has to be
+# said before the long build and the wait for Apple, not after. Run with an
+# empty environment, so that no notary credentials from the caller's shell
+# could carry a release past this point.
+expect "a release whose update key cannot be read stops at once" 1 \
+    env -i PATH="$PATH" HOME="$HOME" HERACLES_UPDATE_KEY_FILE="$WORK/no-such-key" macos/release.sh
+said "and says it is about the update key" "update key"
 
 echo
 if [ "$FAILED" = 0 ]; then

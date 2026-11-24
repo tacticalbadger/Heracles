@@ -367,15 +367,22 @@ makes a key for the run, two copies of the current build that claim to be
 versions 9.9.1 and 9.9.2 under a bundle identifier of their own, a library
 in its work folder, and a feed served from this Mac. It passes only if:
 
-0. a copy with a library of its own and no feed named does not look at all;
+0. a copy with a library of its own and no feed named does not look at all,
+   and its two menu items for updates are greyed out;
 1. the old copy finds the new one, verifies it, and is the new version on
    disk once it has quit;
-2. the updated copy is then offered nothing;
+2. the updated copy is then offered nothing, its Check for Updates… item
+   can be chosen, and Check for Updates Automatically is ticked;
 3. a zip altered after signing is refused, for that reason;
 4. a feed altered after signing is refused, for that reason, with nothing
    downloaded;
 5. the same feed, 21 days on, is read under Sparkle's 20-day rule and still
    gets nothing downloaded.
+
+The menu items are read the way the menu draws them. SwiftUI brings a
+menu's items up to date when the menu is about to open, not when what they
+show changes, so the copy tells its menu that first; looked at without it,
+the items are as they were at launch, before the updater had started.
 
 The copies start behind whatever is in front, though a window of theirs may
 show. The run touches neither the real update key nor GitHub nor the real

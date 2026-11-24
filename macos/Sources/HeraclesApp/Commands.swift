@@ -12,6 +12,9 @@ struct HeraclesCommands: Commands {
     @FocusedValue(\.workspace) private var workspace
 
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            UpdateMenuItems()
+        }
         CommandGroup(replacing: .newItem) {
             Button("New Page") { workspace?.createNote(.page) }
                 .keyboardShortcut("n")

@@ -33,6 +33,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.afterChange = { [weak scheduler] in scheduler?.syncSoon() }
             scheduler.syncSoon()
         }
+
+        // Over-the-air updates. Not every run looks: see `UpdatePolicy`.
+        Updates.shared.start()
+        // For the update rehearsal (macos/update-rehearsal.sh): look two
+        // seconds after launch and not at the next scheduled time, and say
+        // whether this run looks at all.
+        if CommandLine.arguments.contains("--demo-update") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                Updates.log("looking for an update (active: \(Updates.shared.isActive))")
+                Updates.shared.checkInBackground()
+            }
+        }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

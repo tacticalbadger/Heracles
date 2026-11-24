@@ -32,6 +32,16 @@
   <true/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+  <!-- Updates over the air (Sparkle). The app looks once a day, and takes
+       an update only if the feed and the archive are both signed with the
+       update key. build-app.sh adds the feed's address (SUFeedURL) and the
+       key's public half (SUPublicEDKey) from macos/update-config.sh. -->
+  <key>SUEnableAutomaticChecks</key>
+  <true/>
+  <key>SURequireSignedFeed</key>
+  <true/>
+  <key>SUVerifyUpdateBeforeExtraction</key>
+  <true/>
   <!-- heracles://note/<id> links open the note they name. -->
   <key>CFBundleURLTypes</key>
   <array>

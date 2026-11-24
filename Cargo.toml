@@ -1,5 +1,4 @@
-# Rust workspace for the native rewrite (docs/review-and-native-rewrite.md).
-# The Electron app in electron/ and renderer/ is unaffected by this file.
+# Rust workspace: the app's core, and the tool that generates its Swift bindings.
 [workspace]
 resolver = "3"
 members = ["core", "tools/bindgen"]

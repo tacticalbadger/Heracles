@@ -2,14 +2,13 @@ import Foundation
 import HeraclesCore
 
 extension AppModel {
-    /// The Electron app's database, if it is where that app keeps it.
+    /// The original app's database, if it is where that app kept it.
     public static func legacyDatabase(in dataDirectory: URL) -> URL? {
         let file = dataDirectory.appendingPathComponent("heracles.sqlite")
         return FileManager.default.fileExists(atPath: file.path) ? file : nil
     }
 
-    /// On the first launch of the native app, bring the Electron app's
-    /// library across. Does nothing if this library already has content or
+    /// On the first launch, bring the original app's library across. Does nothing if this library already has content or
     /// the import has been done: the core refuses both.
     ///
     /// Returns what was imported, or `nil` if there was nothing to do.
@@ -24,7 +23,7 @@ extension AppModel {
             // Already imported.
             return nil
         } catch {
-            lastError = "The Electron library could not be imported. It has not been changed. "
+            lastError = "The library from the original Heracles could not be imported. It has not been changed. "
                 + ((error as? LocalizedError)?.errorDescription ?? String(describing: error))
             return nil
         }

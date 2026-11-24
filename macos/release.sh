@@ -13,7 +13,7 @@
 # a different one.
 #
 # Notarizing needs credentials, given in one of three ways:
-#   - the same three variables the Electron release uses:
+#   - an App Store Connect API key:
 #       APPLE_API_KEY      path to the App Store Connect API key (.p8)
 #       APPLE_API_KEY_ID   the key's id
 #       APPLE_API_ISSUER   the issuer id

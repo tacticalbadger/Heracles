@@ -14,8 +14,9 @@
   <string>Heracles</string>
   <key>CFBundleIconFile</key>
   <string>Heracles</string>
-  <!-- Not the Electron app's id (com.heracles.notes), so the two can be
-       installed side by side while the native app is being built. -->
+  <!-- Not the original app's id (com.heracles.notes), so the two never
+       shared preferences. Every installed copy's settings and its updates
+       hang on this id: do not change it. -->
   <key>CFBundleIdentifier</key>
   <string>com.heracles.notes.native</string>
   <key>CFBundlePackageType</key>

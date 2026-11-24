@@ -24,7 +24,6 @@ way Toolbox does, so that nobody has to do that again.
 
 - Installing updates without asking.
 - Delta updates, beta channels, or a server of our own.
-- Updates for the Electron app, which keeps its own updater.
 - Telling 0.3.3 and earlier that a new version exists. They have no
   updater: 0.4.0 is the last version installed by hand.
 
@@ -57,13 +56,13 @@ way Toolbox does, so that nobody has to do that again.
 
 1. **Sparkle 2, as in Toolbox (chosen).** A framework that does the
    checking, the signature checks, the window and the swap of the bundle.
-   It is what `docs/review-and-native-rewrite.md` planned, it is in use in
+   It is what the project had planned, it is in use in
    the owner's other app, and its behavior when a signature fails has
    already been read from its source and rehearsed there.
 2. **An updater of our own** over the GitHub releases API. Rejected: it
    means writing the download, the signature check and the replacement of
    a running app, which is where updaters go wrong, for no gain.
-3. **The plan's original feed on the R2 bucket.** Rejected: a file on each
+3. **A feed on a storage bucket of our own.** Rejected: a file on each
    GitHub release needs no server and no second set of credentials, and
    Toolbox has shown that it works.
 

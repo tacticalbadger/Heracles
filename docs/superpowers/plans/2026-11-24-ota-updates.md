@@ -212,7 +212,7 @@ The delegate methods log the lines listed under Interfaces with `NSLog`, and `fe
 - Modify: `README.md` (the status section, the tree of `macos/`)
 - Modify: `BUILDING.md` ("Releasing the native app"; the two clone addresses that still name the repository's old owner)
 - Modify: `CHANGELOG.md` (a `## [0.4.0] - 2026-11-24` section and its link)
-- Modify: `docs/review-and-native-rewrite.md` (status: built, verified, not verified; the old repository address)
+- Modify: the status document, now `docs/status.md` (status: built, verified, not verified; the old repository address)
 - Modify: `docs/superpowers/specs/2026-11-24-ota-updates-design.md` (only if building changed a decision)
 
 - [ ] **Step 1:** README: it updates itself from 0.4.0 on; the two menu items; keep it in Applications; 0.3.3 and earlier need one download by hand.
@@ -231,4 +231,4 @@ No files change except the status notes at the end. Every step is a command with
 - [ ] **Step 4:** On a copy of the disk image marked as a download (`xattr -w com.apple.quarantine`): Gatekeeper accepts the image and the app in it; the app in it is 0.4.0 (7).
 - [ ] **Step 5:** `macos/publish.sh`. Expected: published, latest, and the served feed is the local one.
 - [ ] **Step 6:** The nearest thing to a real update before a second release exists, as Toolbox did: a copy of the release build relabelled 0.3.9 (1), with a bundle identifier of its own and the real key in it, started against the real feed. Expected: it finds 0.4.0 (7), downloads the published zip, verifies it, and after it quits the copy on disk is the published app (`codesign --verify --deep --strict`, `spctl` says `Notarized Developer ID`).
-- [ ] **Step 7:** Delete `build/Heracles.app` (the owner's standing rule: after the push succeeded, and the app is not running). Record the release in `docs/review-and-native-rewrite.md`, commit `docs: record the 0.4.0 release` and push.
+- [ ] **Step 7:** Delete `build/Heracles.app` (the owner's standing rule: after the push succeeded, and the app is not running). Record the release in the status document, commit `docs: record the 0.4.0 release` and push.

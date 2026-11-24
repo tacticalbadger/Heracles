@@ -2,7 +2,7 @@ import AppKit
 import HeraclesCore
 import SwiftUI
 
-/// Where the library lives. Shared with the Electron app's folder, so its
+/// Where the library lives. The original app used the same folder, so its
 /// database is found beside the new one on first launch.
 public enum DataDirectory {
     public static var url: URL {
@@ -108,7 +108,7 @@ extension ImportReport: Identifiable {
     public var id: String { backupPath }
 }
 
-/// Shown once, after the Electron app's library has been brought across.
+/// Shown once, after the original app's library has been brought across.
 struct ImportSummaryView: View {
     let report: ImportReport
     @Environment(\.dismiss) private var dismiss

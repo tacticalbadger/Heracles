@@ -3,7 +3,7 @@ import HeraclesCore
 import UserNotifications
 
 /// Reading and writing the dates stored on tasks. They are UTC timestamps in
-/// the form JavaScript's `toISOString` writes, which is what the Electron
+/// the form JavaScript's `toISOString` writes, which is what the original
 /// app stored.
 public enum TaskDates {
     private static let withFraction = Date.ISO8601FormatStyle(includingFractionalSeconds: true)

@@ -1,21 +1,11 @@
-node_modules
 .DS_Store
 
-# Built / packaged applications
-app/
-App/
+# Built and packaged applications
 *.app
-*.asar
 *.dmg
 *.zip
 
-# Vite renderer build output
-dist/
-
-# R2 release-upload credentials (see scripts/upload-release.cjs)
-.env.r2
-
-# Native rewrite build output (Rust core, Swift package)
+# Build output (Rust core, Swift package)
 /target/
 .build/
 # Written by macos/release.sh and macos/update-rehearsal.sh

@@ -154,17 +154,17 @@ A local-first notebook: pages in notebooks, a block editor, split panes and kanb
 
 ## Your notes
 
-If you have never used Heracles, it starts with an empty library and this section does not apply to you.
+Notes are kept on your Mac, in \`~/Library/Application Support/Heracles/\`. A new install starts with an empty library.
 
-The preview uses the same folder as the Electron app, \`~/Library/Application Support/Heracles/\`. The first time it starts, it copies your library from \`heracles.sqlite\` into a new file, \`heracles.db\`. The Electron database is backed up first and is never changed, so the Electron app keeps working. After that the two apps hold separate copies: an edit made in one does not appear in the other.
+If the original Heracles app (version 0.1) left a library in that folder, the first launch copies it from \`heracles.sqlite\` into a new file, \`heracles.db\`. The old database is backed up first and is never changed.
 
-To try the preview without it reading your library, start it from Terminal with a different folder:
+To try the preview on a different folder, start it from Terminal:
 
 \`\`\`bash
 HERACLES_DATA_DIR=~/heracles-trial /Applications/Heracles.app/Contents/MacOS/Heracles
 \`\`\`
 
-The full list of changes is in [CHANGELOG.md](https://github.com/$GH_REPO/blob/$TAG/CHANGELOG.md), and the state of the rewrite is in [docs/review-and-native-rewrite.md](https://github.com/$GH_REPO/blob/$TAG/docs/review-and-native-rewrite.md#rewrite-status).
+The full list of changes is in [CHANGELOG.md](https://github.com/$GH_REPO/blob/$TAG/CHANGELOG.md), and what is built and what has not been checked is in [docs/status.md](https://github.com/$GH_REPO/blob/$TAG/docs/status.md).
 
 SHA-256 checksums:
 

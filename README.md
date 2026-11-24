@@ -4,7 +4,7 @@
 
 A local-first, hierarchical notebook for macOS: pages in notebooks, a block editor, split panes and kanban boards. Everything is stored on your Mac in one SQLite database.
 
-Heracles is a native Mac app, written in Swift over a Rust core. It replaces the Electron app this project started as. That app is still in the repository and is described in [`docs/electron.md`](./docs/electron.md).
+Heracles is a native Mac app, written in Swift over a Rust core.
 
 ## Status and download
 
@@ -14,9 +14,9 @@ The native app is a preview. The latest build is on the [releases page](https://
 - From 0.4.0 on it updates itself. It looks for a new version once a day and from **Heracles ▸ Check for Updates…**, shows what changed, and installs it when you agree. **Check for Updates Automatically** turns the daily look off. Keep the app in Applications for this to work.
 - Version 0.3.3 and earlier cannot update themselves. Install a current version by hand once, and later ones arrive in the app.
 - Nobody has used it day to day yet. It passes its automated tests, which cannot move a mouse.
-- The first time it starts, it copies an existing Electron library into its own database. See [Data storage](#data-storage).
+- If the original Heracles app (version 0.1) left a library on your Mac, it is copied into the new database the first time the app starts. See [Data storage](#data-storage).
 
-What is built, what is missing and what has not been checked is recorded in the [rewrite status](./docs/review-and-native-rewrite.md#rewrite-status).
+What is built, what is missing and what has not been checked is recorded in [`docs/status.md`](./docs/status.md).
 
 ## Features
 
@@ -62,7 +62,7 @@ swift test --package-path macos      # the bindings, the app's model and the edi
 build/Heracles.app/Contents/MacOS/Heracles --self-test
 ```
 
-[`BUILDING.md`](./BUILDING.md#building-the-native-mac-app-in-progress) has the details, including how to sign and publish a release.
+[`BUILDING.md`](./BUILDING.md) has the details, including how to sign and publish a release.
 
 ## Project structure
 
@@ -71,7 +71,7 @@ core/                      heracles-core: the app's data layer (Rust)
 ├── src/doc/               Block document model, HTML and Markdown conversion
 ├── src/store/             SQLite schema, notes, boards, search, image store
 ├── src/transfer.rs        Import and export of files
-├── src/legacy.rs          One-time import of the Electron library
+├── src/legacy.rs          One-time import of the original app's library
 ├── src/changes.rs         Change feed that keeps every window current
 └── tests/                 Behaviour tests, one file per area
 macos/                     The Mac app (Swift)
@@ -92,7 +92,6 @@ macos/                     The Mac app (Swift)
 │   └── Editor/            The block editor: document model, text views, page
 └── Tests/                 Binding, app model and editor tests
 tools/bindgen/             UniFFI's Swift bindings generator, version-pinned
-electron/, renderer/       The Electron app (see docs/electron.md)
 ```
 
 ## Data storage
@@ -103,9 +102,9 @@ The app keeps everything in `~/Library/Application Support/Heracles/`:
 |---|---|
 | `heracles.db` | Notes, documents, boards and the search index, in SQLite |
 | `images/` | Pictures, one file each, named by their content |
-| `backups/` | The copy made of an Electron library before it was imported |
+| `backups/` | The copy made of the original app's library before it was imported |
 
-The Electron app uses the same folder, with its library in `heracles.sqlite`. The first time the native app starts and finds that file, it backs it up, reads the backup, and copies the library into `heracles.db`. The Electron file is never changed, so the Electron app keeps working. From then on the two apps hold separate copies, and an edit made in one does not appear in the other.
+The original Heracles app (version 0.1) kept its library in the same folder, in `heracles.sqlite`. The first time the app starts and finds that file, it backs it up, reads the backup, and copies the library into `heracles.db`. The old file is never changed.
 
 To try the app on a different folder, start it with `HERACLES_DATA_DIR` set:
 
@@ -116,19 +115,8 @@ HERACLES_DATA_DIR=~/heracles-trial build/Heracles.app/Contents/MacOS/Heracles
 ## Documentation
 
 - [`CHANGELOG.md`](./CHANGELOG.md) — notable changes per release
-- [`BUILDING.md`](./BUILDING.md) — build, signing and release guide for both apps
-- [`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md) — the rewrite plan, its status, and the code review that led to it
-- [`docs/electron.md`](./docs/electron.md) — the Electron app: features, scripts, releases and architecture notes
-- [`docs/architecture.md`](./docs/architecture.md) — the original goals and the Electron design
-- [`ROADMAP.md`](./ROADMAP.md) — known gaps in the Electron app and planned work
-- [`windowsInstructions.md`](./windowsInstructions.md) — signing and shipping the Windows build
-
-## Sibling repositories
-
-- [Heracles](https://github.com/tacticalbadger/Heracles) — this repository: the native Mac app, and the Electron app's macOS build.
-- [Heracles-Windows](https://github.com/tacticalbadger/Heracles-Windows) — the Windows build of the Electron app.
-
-The two repositories share the Electron code and its git history. A change to that code, and to its documentation, belongs in both: commit to one, then merge or cherry-pick into the other. Platform packaging and signing stay in their own repository. The native app is in this repository only.
+- [`BUILDING.md`](./BUILDING.md) — build, signing, release and update guide
+- [`docs/status.md`](./docs/status.md) — what is built, the choices behind it, what is missing and what has not been checked
 
 ## License
 

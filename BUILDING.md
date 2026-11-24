@@ -1,103 +1,20 @@
 # Building Heracles
 
-Heracles is two apps in one repository. The native Mac app, in Swift over a
-Rust core, is the one being developed: see
-[Building the native Mac app](#building-the-native-mac-app-in-progress). The
-rest of this document covers the Electron app it replaces, which still builds
-for **macOS** and **Windows**. For that app's day-to-day development setup see
-[`docs/electron.md`](./docs/electron.md).
-
----
+Heracles is a native Mac app: a Swift interface over a Rust core. Version
+0.4.0 is its current preview release. For what works and what has not been
+checked, see [`docs/status.md`](./docs/status.md).
 
 ## Prerequisites
 
-| Tool        | Version   | Notes |
-|-------------|-----------|-------|
-| Node.js     | 20.x LTS  | The native module `better-sqlite3` needs to match the Electron ABI; Node 20 is what `electron@41` was tested with. |
-| npm         | 10.x      | Ships with Node 20. |
-| Git         | any       | For cloning. |
-| Python      | 3.x       | Required by `node-gyp` for native module rebuilds. macOS Xcode CLT and Windows Build Tools provide this. |
-
-Install dependencies once:
+You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`
+and `x86_64-apple-darwin` targets), Xcode, and Git.
 
 ```bash
 git clone https://github.com/tacticalbadger/Heracles.git
 cd Heracles
-npm install
 ```
 
-`npm install` runs `electron-builder install-app-deps` indirectly, which
-rebuilds `better-sqlite3` against the Electron ABI for your current platform.
-
----
-
-## Building for macOS
-
-> Build **on a Mac**. Cross-compiling to macOS from another OS is not
-> supported.
-
-### Quick path — unpacked `.app` bundle
-
-```bash
-npm run package:mac
-```
-
-What this does:
-
-1. Runs `vite build` to produce `dist/renderer/`.
-2. Runs `electron-builder --mac --dir` which copies the Electron binary,
-   stitches in `electron/`, `dist/renderer/`, and `node_modules/`, and produces
-   a `.app` directory at `app/macOS/mac-arm64/Heracles.app` (or `mac/` for
-   Intel).
-
-> `npm run package:mac` (`--dir`) is a **quick local build, ad-hoc signed only** —
-> no Developer ID, not notarized. For a distributable build use
-> `npm run release:mac` (see [Distribution → macOS](#macos)).
-
-### Producing a `.dmg` installer
-
-```bash
-npm run package:mac:dmg
-```
-
-Generates `app/macOS/Heracles-0.1.0-arm64.dmg` (ad-hoc). The **signed + notarized**
-`.dmg` (and `.zip`) come from `npm run release:mac`.
-
-### Targeting Intel + Apple Silicon
-
-By default, `electron-builder` builds for the host architecture. To build
-universal or Intel-only on an Apple Silicon Mac:
-
-```bash
-# Intel only
-npx electron-builder --mac --dir --x64
-
-# Universal (both architectures, ~2× size)
-npx electron-builder --mac --dir --universal
-```
-
-### Native module note
-
-`better-sqlite3` is recompiled for the bundled Electron version via
-`@electron/rebuild`, which `electron-builder` runs automatically inside the
-`--mac` step. If you see runtime errors about NODE_MODULE_VERSION mismatches,
-run:
-
-```bash
-npx electron-builder install-app-deps
-```
-
----
-
-## Building the native Mac app (in progress)
-
-The Swift + Rust rewrite lives beside the Electron app and builds separately.
-Version 0.4.0 is its current preview release. For what works and what has not been checked, see the status section of
-[`docs/review-and-native-rewrite.md`](./docs/review-and-native-rewrite.md).
-
-You need Rust (via [rustup](https://rustup.rs), with the `aarch64-apple-darwin`
-and `x86_64-apple-darwin` targets) and Xcode. Node.js is only needed for the
-Electron app.
+## Building
 
 ```bash
 macos/build-app.sh              # universal build → build/Heracles.app
@@ -119,7 +36,7 @@ updates. SwiftPM downloads it the first time, at the version pinned in
 `macos/Package.swift`, and `build-app.sh` copies it into the bundle.
 
 `build-app.sh` signs the app ad hoc, which runs on the Mac that built it. For
-a build to give to someone else, see [Releasing](#releasing-the-native-app).
+a build to give to someone else, see [Releasing](#releasing).
 
 ### Tests
 
@@ -143,7 +60,7 @@ with a sample note that has one of every kind of block, into PNG files. It is
 a way to look at the interface from a script.
 
 Two more checks belong to releases and are described under
-[Releasing](#releasing-the-native-app): `macos/test-release-scripts.sh`
+[Releasing](#releasing): `macos/test-release-scripts.sh`
 and `macos/update-rehearsal.sh`.
 
 ### The app icon
@@ -172,7 +89,7 @@ script.
 `build-app.sh` copies the first two into the app, and `--self-test` checks
 that they arrived.
 
-### Releasing the native app
+## Releasing
 
 ```bash
 macos/release.sh                  # build, sign, notarize, staple, make the disk image and the feed
@@ -210,7 +127,7 @@ The signing certificate is found in the keychain: the first Developer ID
 Application certificate there. Set `CODESIGN_IDENTITY` to a name or a SHA-1
 to use a different one.
 
-Notarizing needs the same credentials as the Electron release:
+Notarizing needs credentials. An App Store Connect API key:
 
 ```bash
 export APPLE_API_KEY=/path/to/AuthKey_XXXXXXXXXX.p8
@@ -240,8 +157,7 @@ To publish a version:
    `CFBundleVersion`, the build number. Add a section for the version to
    `CHANGELOG.md`, and write `docs/release-notes/<version>.md`: a few
    Markdown bullets, which the update window shows and the release page
-   repeats. The native app has its own version number. `package.json` is
-   the Electron app's.
+   repeats.
 2. Commit, and push the branch.
 3. Run `macos/release.sh`.
 4. Run `macos/update-rehearsal.sh`.
@@ -258,8 +174,8 @@ from GitHub, and only then publishes the release as the latest one. The
 order matters. This repository has immutable releases turned on: once a
 release is published, files cannot be added to it, replaced or removed, and
 its tag name can never be used again, even if the release is deleted. 0.2.0
-was published before its file was attached, which is why it has no download
-and the first preview is 0.2.1.
+was published before its file was attached, which is why the first preview
+was 0.2.1.
 
 Before it tags anything, `publish.sh` refuses a build that is not notarized,
 a feed that was written for a different zip or build number, a zip whose
@@ -267,12 +183,14 @@ signature does not verify against the update key, uncommitted changes, and
 a commit that is not on GitHub. Afterwards it checks that the address
 installed copies read serves the new feed.
 
-Version 0.2.1 was published signed and not notarized, because no notary
-credentials were at hand, and its download cannot be replaced. Builds from
-0.3.0 on are notarized, and from 0.3.1 on they come as a disk image as well
-as a zip. From 0.4.0 on they come with a feed, and the app updates itself.
+Releases before 0.4.0 are no longer published. Their pages were deleted on
+2026-11-24, because those builds held file paths from the Mac they were made
+on, and a published release here cannot have its files replaced. `release.sh`
+checks every build for such paths now. 0.4.0 is the first release with a
+feed, and the first that updates itself. The version numbers 0.2.0 to 0.3.3
+cannot be used again.
 
-#### Updates
+### Updates
 
 The app updates itself with [Sparkle](https://sparkle-project.org). Once a
 day, and from **Heracles ▸ Check for Updates…**, it reads
@@ -307,7 +225,7 @@ A run started for a trial or a test does not look for updates: a library
 named with `HERACLES_DATA_DIR`, `--self-test` and `--snapshot`. Otherwise a
 trial copy would be offered the published app.
 
-#### The update key
+### The update key
 
 An update is installed only if the feed and the zip both carry a signature
 made with the update key. Its public half is in `macos/update-config.sh` and
@@ -350,7 +268,7 @@ deserves the same care. Both rules were read from Sparkle 2.10.1's source
 for Toolbox and are written up in that project's security review, in the
 addendum on updates over the air. Do not restate them from memory.
 
-#### Checking updates without a release
+### Checking updates without a release
 
 ```bash
 macos/test-release-scripts.sh   # a few seconds; no build needed
@@ -388,18 +306,18 @@ The copies start behind whatever is in front, though a window of theirs may
 show. The run touches neither the real update key nor GitHub nor the real
 library, and removes what its copies kept in `~/Library`.
 
-### Trying it without touching your library
+## Trying it without touching your library
 
-By default the app uses `~/Library/Application Support/Heracles/`, the same
-folder as the Electron app, and on first launch imports `heracles.sqlite` from
-it into a new `heracles.db`. The Electron database is backed up and never
-modified. To use a different folder:
+By default the app uses `~/Library/Application Support/Heracles/`. If the
+original Heracles app (version 0.1) left a library there, `heracles.sqlite`,
+the first launch imports it into a new `heracles.db`. The old database is
+backed up and never modified. To use a different folder:
 
 ```bash
 HERACLES_DATA_DIR=/tmp/heracles-trial build/Heracles.app/Contents/MacOS/Heracles
 ```
 
-### If `xcodebuild` or `swift test` cannot find Xcode
+## If `xcodebuild` or `swift test` cannot find Xcode
 
 When the command line tools are selected instead of Xcode, the build scripts
 find `/Applications/Xcode.app` by themselves. For commands you run directly,
@@ -409,182 +327,3 @@ or prefix the command:
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-path macos
 ```
-
----
-
-## Building for Windows
-
-There are two viable approaches.
-
-### Approach A — build on Windows (recommended)
-
-This is the only path that's fully reliable, because `better-sqlite3` must be
-compiled against the Windows Electron ABI and Microsoft's C++ toolchain.
-
-**Setup once:**
-
-1. Install **Node.js 20 LTS** from <https://nodejs.org>. During the installer,
-   tick the **"Automatically install the necessary tools"** checkbox — this
-   pulls in Python + Visual Studio Build Tools via `windows-build-tools`.
-   (If you skipped that, run `npm install --global --production windows-build-tools`
-   in an elevated PowerShell.)
-2. Install **Git for Windows** from <https://git-scm.com>.
-
-**Build:**
-
-```powershell
-git clone https://github.com/tacticalbadger/Heracles.git
-cd Heracles
-npm install
-npm run package:win
-```
-
-Output:
-
-```
-app\windows\Heracles Setup 0.1.0.exe         # NSIS installer
-app\windows\win-unpacked\Heracles.exe        # Unpacked binary (debug / portable)
-```
-
-For an unpacked folder without the installer wrapper:
-
-```powershell
-npm run package:win:dir
-# → app\windows\win-unpacked\
-```
-
-### Approach B — cross-compile from macOS or Linux via Docker
-
-`electron-builder` supports cross-platform builds, but native modules like
-`better-sqlite3` need Windows binaries. The most reliable container is
-`electronuserland/builder:wine`:
-
-```bash
-docker run --rm -ti \
-  --env ELECTRON_CACHE="/root/.cache/electron" \
-  --env ELECTRON_BUILDER_CACHE="/root/.cache/electron-builder" \
-  -v ${PWD}:/project \
-  -v ${PWD##*/}-node-modules:/project/node_modules \
-  -v ~/.cache/electron:/root/.cache/electron \
-  -v ~/.cache/electron-builder:/root/.cache/electron-builder \
-  electronuserland/builder:wine \
-  /bin/bash -c "npm install && npm run package:win"
-```
-
-Notes:
-
-- The container ships with Wine + the Windows build prerequisites needed to
-  rebuild `better-sqlite3` for the win32 target.
-- Build is noticeably slower than a native Windows build (~3–5×).
-- The installer it produces is functionally identical to the native one but
-  unsigned.
-
-### Approach C — CI / GitHub Actions
-
-For repeatable signed builds on both platforms, use GitHub Actions with a
-matrix on `macos-latest` and `windows-latest` runners and upload the artifacts
-to a GitHub Release. Out of scope for this doc, but `electron-builder`'s
-[GitHub Actions guide](https://www.electron.build/multi-platform-build) is the
-canonical reference.
-
----
-
-## Distribution
-
-Distributable builds are **signed and published to a Cloudflare R2 bucket**, and
-the app **auto-updates** from it via `electron-updater`. See the
-[Releases & auto-update](./docs/electron.md#releases--auto-update) section for the
-end-to-end flow: bump version → build → `npm run release:upload`.
-
-`release:upload` (`scripts/upload-release.cjs`) discovers the current version's
-artifacts in `app/macOS` or `app/windows`, uploads them plus the update feed to
-the bucket root over R2's S3 API (feeds last, so clients never see a version
-whose artifacts aren't up yet; feeds get `Cache-Control: no-cache`), and
-verifies the public URL responds. It needs an R2 API token in
-`R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` (env vars or a git-ignored
-`.env.r2` at the repo root); `-- --dry-run` previews without uploading.
-
-### macOS
-
-`npm run release:mac` produces a **Developer ID-signed, notarized, and stapled**
-`.zip` and `.dmg`. It requires the signing identity in your keychain and notary
-credentials in the environment:
-
-```bash
-export APPLE_API_KEY="$HOME/.appstoreconnect/private_keys/AuthKey_XXXXXXXXXX.p8"
-export APPLE_API_KEY_ID="XXXXXXXXXX"
-export APPLE_API_ISSUER="<issuer-uuid>"
-npm run release:mac
-```
-
-Config lives in `package.json` → `build.mac` (`identity`, `hardenedRuntime`,
-`entitlements` → `build/entitlements.mac.plist`, `notarize`). An
-`afterAllArtifactBuild` hook (`build/notarize-dmg.cjs`) additionally notarizes +
-staples the DMG. Verify with `spctl -a -t install Heracles.app` (→ *accepted,
-Notarized Developer ID*) and `xcrun stapler validate`.
-
-> For a quick local run you don't need any of this — `npm run package:mac`
-> produces an ad-hoc build; clear quarantine with
-> `xattr -dr com.apple.quarantine /Applications/Heracles.app` or right-click →
-> **Open**.
-
-### Windows
-
-`npm run release:win` produces the NSIS installer + `latest.yml`. For an
-**official, SmartScreen-clean, auto-update-capable** Windows build you must
-code-sign it — full instructions (certificate options, electron-builder wiring,
-verification, and uploading to the bucket) are in
-[`windowsInstructions.md`](./windowsInstructions.md).
-
----
-
-## Troubleshooting
-
-### `Error: The module 'better-sqlite3' was compiled against a different Node.js version`
-
-The native binding was built for plain Node, not Electron's bundled Node.
-Re-run:
-
-```bash
-npx electron-builder install-app-deps
-```
-
-### Build fails with `gyp ERR! find Python`
-
-Install Python 3 and either re-run `npm install` or set:
-
-```bash
-npm config set python "$(which python3)"
-```
-
-### Vite warns about chunks larger than 500 kB
-
-Cosmetic only — the editor pulls in TipTap + CodeMirror + ProseMirror, which
-naturally exceeds the default chunk-size warning. Suppress with
-`build.chunkSizeWarningLimit` in `vite.config.ts` if it bothers you.
-
-### macOS bundle won't launch when copied to another Mac
-
-Quarantine flag — see [Distribution → macOS](#macos).
-
-### Windows installer immediately closes
-
-Usually a missing VC++ runtime on the target machine. `electron-builder`'s
-NSIS template bundles the runtime, but if you used `--win dir`, the user
-needs to install VC++ Redistributable themselves.
-
----
-
-## Reference: script summary
-
-| Script                      | Output                                                |
-|-----------------------------|-------------------------------------------------------|
-| `npm run dev`               | Dev server on `:5173` + Electron with HMR             |
-| `npm run build`             | `dist/renderer/` (renderer bundle only)               |
-| `npm run package:mac`       | `app/macOS/mac-arm64/Heracles.app` (unpacked)         |
-| `npm run package:mac:dmg`   | `app/macOS/Heracles-<version>-arm64.dmg`              |
-| `npm run package:win`       | `app\windows\Heracles Setup <version>.exe` (NSIS)     |
-| `npm run package:win:dir`   | `app\windows\win-unpacked\`                           |
-| `npm run preview`           | Preview built renderer in a browser (no Electron)     |
-
-All packaged outputs land under `app/` and are gitignored.

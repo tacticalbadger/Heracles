@@ -21,7 +21,7 @@ struct TaskDatesTests {
         #expect(date == Date(timeIntervalSince1970: 1_796_083_200))  // 2026-12-01 00:00 UTC
     }
 
-    @Test func timesAreWrittenTheWayTheElectronAppWroteThem() {
+    @Test func timesAreWrittenTheWayTheOriginalAppWroteThem() {
         let date = Date(timeIntervalSince1970: 1_796_029_200.25)
         #expect(TaskDates.string(from: date) == "2026-11-30T09:00:00.250Z")
         #expect(TaskDates.date(from: TaskDates.string(from: date)) == date)

@@ -7,6 +7,7 @@ public struct RootView: View {
     private let model: AppModel
     @State private var workspace: Workspace
     @State private var searchText = ""
+    @Environment(\.openWindow) private var openWindow
     /// The pane layout, kept between launches for each window.
     @SceneStorage("heracles.panes") private var savedPanes = ""
     private let initialNote: String?
@@ -63,6 +64,14 @@ public struct RootView: View {
             if let link = model.pendingLink {
                 workspace.follow(link)
                 model.pendingLink = nil
+            }
+        }
+        .onChange(of: model.taskToShow, initial: true) {
+            // A task has a window of its own: asked for again, that window
+            // comes forward.
+            if let task = model.taskToShow {
+                openWindow(value: task)
+                model.taskToShow = nil
             }
         }
         // A note deleted here or in another window leaves this window's panes.

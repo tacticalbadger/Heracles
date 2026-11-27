@@ -24,7 +24,7 @@ extension AppModel {
             return nil
         } catch {
             lastError = "The library from the original Heracles could not be imported. It has not been changed. "
-                + ((error as? LocalizedError)?.errorDescription ?? String(describing: error))
+                + Self.words(for: error)
             return nil
         }
     }

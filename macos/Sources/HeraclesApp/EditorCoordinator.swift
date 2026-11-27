@@ -22,6 +22,9 @@ final class EditorCoordinator: NSObject, BlockEditorHost {
     private let model: AppModel
     private var shown: (noteID: String, editable: Bool, revision: Int64)?
     private var revealed: String?
+    /// The last request for the caret that was seen. `nil` until the view
+    /// has been drawn once.
+    private var focusRequest: Int?
     private var isDirty = false
     private var pendingSave: Task<Void, Never>?
     private var lastWrite: Task<Void, Never>?
@@ -75,6 +78,19 @@ final class EditorCoordinator: NSObject, BlockEditorHost {
             editor.reveal(blockID)
             done()
         }
+    }
+
+    /// Put the caret at the start of the note, for someone leaving its
+    /// title by Return or the down arrow. Once per request: the view is
+    /// drawn again with the same number at every change, and that must not
+    /// move the caret. Nor does the number an editor is made with: that
+    /// one was answered by whatever stood in this pane before it.
+    func focusStart(request: Int) {
+        let known = focusRequest
+        focusRequest = request
+        guard let known, request != known else { return }
+        // After this pass of layout, as for bringing a block into view.
+        DispatchQueue.main.async { [editor] in editor.focusStart() }
     }
 
     /// Save now what the editor is holding, if anything.
@@ -201,6 +217,8 @@ struct NoteEditor: NSViewRepresentable {
     /// A block to bring into view, when the note was opened by a link to it.
     var reveal: String?
     var onRevealed: () -> Void = {}
+    /// Goes up each time the caret is wanted at the start of the note.
+    var focusRequest = 0
     /// Called when the user clicks into this editor.
     var onFocus: () -> Void = {}
 
@@ -216,6 +234,7 @@ struct NoteEditor: NSViewRepresentable {
         context.coordinator.onFocus = onFocus
         context.coordinator.show(noteID: noteID, editable: editable, change: change)
         context.coordinator.reveal(reveal, then: onRevealed)
+        context.coordinator.focusStart(request: focusRequest)
     }
 
     static func dismantleNSView(_ view: NSScrollView, coordinator: EditorCoordinator) {

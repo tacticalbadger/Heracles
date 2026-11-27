@@ -2,14 +2,14 @@ import HeraclesCore
 import SwiftUI
 
 /// A todo list as a board: columns of cards. Drag a card to another column,
-/// or onto a card to land in front of it.
+/// or onto a card to land in front of it. A card opens as a task, in a
+/// window of its own.
 struct BoardView: View {
     @Environment(AppModel.self) private var model
     let todoList: Note
     @State private var columns: [TaskColumn] = []
     @State private var tasks: [TodoTask] = []
     @State private var newColumn = ""
-    @State private var openTask: OpenTask?
 
     var body: some View {
         ScrollView(.horizontal) {
@@ -18,9 +18,11 @@ struct BoardView: View {
                     BoardColumnView(
                         column: column,
                         cards: tasks.filter { $0.columnId == column.id },
+                        tasks: tasks,
+                        columnIDs: columns.map(\.id),
                         subtaskCounts: subtaskCounts,
-                        canDelete: !todoList.trashed,
-                        open: { openTask = OpenTask(id: $0) })
+                        canChange: !todoList.trashed,
+                        open: { model.taskToShow = TaskWindowID(todoListID: todoList.id, taskID: $0) })
                 }
                 if !todoList.trashed {
                     TextField("New column", text: $newColumn)
@@ -37,10 +39,6 @@ struct BoardView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .disabled(todoList.trashed)
-        .sheet(item: $openTask) { task in
-            TaskDetailView(todoListID: todoList.id, rootTaskID: task.id)
-                .environment(model)
-        }
         // Reloads on first showing, when another list is shown, and whenever
         // the change feed says this board changed, in any window.
         .task(id: BoardState(id: todoList.id, version: model.boardVersion(for: todoList.id))) {
@@ -61,10 +59,6 @@ struct BoardView: View {
     }
 }
 
-private struct OpenTask: Identifiable {
-    let id: String
-}
-
 private struct BoardState: Hashable {
     let id: String
     let version: Int
@@ -74,30 +68,49 @@ private struct BoardColumnView: View {
     @Environment(AppModel.self) private var model
     let column: TaskColumn
     let cards: [TodoTask]
+    /// Every task of the board, to tell a card of this board from other
+    /// text that is let go over it.
+    let tasks: [TodoTask]
+    /// The board's columns in order, to know which way this one can move.
+    let columnIDs: [String]
     let subtaskCounts: [String: (done: Int, total: Int)]
-    let canDelete: Bool
+    /// False for a list in the trash, which is shown and cannot be changed.
+    let canChange: Bool
     let open: (String) -> Void
+    @State private var name = ""
     @State private var newCard = ""
     @State private var isTargeted = false
+    @FocusState private var nameFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(column.name).font(.headline)
+            HStack(spacing: 4) {
+                // A column is renamed where its name is.
+                TextField("Column name", text: $name)
+                    .textFieldStyle(.plain)
+                    .font(.headline)
+                    .focused($nameFocused)
+                    .onSubmit(commitName)
+                    .accessibilityLabel("Column name")
                 Text("\(cards.count)").foregroundStyle(.secondary)
-                Spacer()
-            }
-            .contextMenu {
-                if canDelete {
-                    Button("Delete Column", role: .destructive) { model.deleteColumn(column.id) }
+                Menu {
+                    columnActions
+                } label: {
+                    Image(systemName: "ellipsis")
                 }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Column actions")
+                .accessibilityLabel("Column actions")
             }
+            .contextMenu { columnActions }
             ForEach(cards, id: \.id) { card in
                 BoardCardView(card: card, subtasks: subtaskCounts[card.id], open: { open(card.id) })
                     .onTapGesture { open(card.id) }
-                    .draggable(card.id)
-                    .dropDestination(for: String.self) { ids, _ in
-                        guard let id = ids.first, id != card.id else { return false }
+                    .draggable(CardDrag(taskID: card.id).text)
+                    .dropDestination(for: String.self) { items, _ in
+                        guard let id = BoardRules.card(in: items, of: tasks, droppedOn: card.id) else { return false }
                         model.moveCard(id, to: column.id, before: card.id)
                         return true
                     }
@@ -115,12 +128,41 @@ private struct BoardColumnView: View {
         .frame(width: 260, alignment: .topLeading)
         .frame(minHeight: 120)
         .background(.quaternary.opacity(isTargeted ? 0.9 : 0.5), in: RoundedRectangle(cornerRadius: 10))
-        .dropDestination(for: String.self) { ids, _ in
-            guard let id = ids.first else { return false }
+        .dropDestination(for: String.self) { items, _ in
+            guard let id = BoardRules.card(in: items, of: tasks) else { return false }
             model.moveCard(id, to: column.id)
             return true
         } isTargeted: {
             isTargeted = $0
+        }
+        .onAppear { name = column.name }
+        // Renamed in another window, or by the core: what is being typed is
+        // not replaced by what is stored.
+        .onChange(of: column.name) { if !nameFocused { name = column.name } }
+        .onChange(of: nameFocused) { if !nameFocused { commitName() } }
+    }
+
+    /// What can be done with the column: from its button, and from a
+    /// right-click on its heading.
+    @ViewBuilder private var columnActions: some View {
+        if canChange {
+            Button("Move Left") { model.moveColumn(column.id, in: column.todoListId, by: -1) }
+                .disabled(BoardRules.order(of: columnIDs, moving: column.id, by: -1) == nil)
+            Button("Move Right") { model.moveColumn(column.id, in: column.todoListId, by: 1) }
+                .disabled(BoardRules.order(of: columnIDs, moving: column.id, by: 1) == nil)
+            Divider()
+            Button("Delete Column", role: .destructive) { model.deleteColumn(column.id) }
+        }
+    }
+
+    private func commitName() {
+        guard canChange else { return }
+        if let renamed = BoardRules.columnName(typed: name, stored: column.name) {
+            model.renameColumn(column.id, to: renamed)
+            name = renamed
+        } else {
+            // Nothing was left of it, or it is as it was: the stored name shows.
+            name = column.name
         }
     }
 }

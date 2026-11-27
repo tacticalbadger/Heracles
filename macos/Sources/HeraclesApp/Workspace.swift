@@ -96,11 +96,22 @@ public final class Workspace {
     @discardableResult
     public func importFiles(_ files: [URL]) -> [Note] {
         let parent = parentForNewNotes
-        let imported = files.compactMap { file in
-            model.attempt { try model.store.importFile(path: file.path, parentId: parent) }
+        var imported: [Note] = []
+        var refused: [String] = []
+        for file in files {
+            // One that cannot be read does not stop the others.
+            do {
+                imported.append(try model.store.importFile(path: file.path, parentId: parent))
+            } catch {
+                refused.append("\(file.lastPathComponent) (\(AppModel.words(for: error)))")
+            }
         }
         if let last = imported.last {
             tree.open(last.id)
+        }
+        // Said once, at the end, naming each file that did not come in.
+        if !files.isEmpty {
+            model.lastError = refused.isEmpty ? nil : "Could not import " + refused.joined(separator: "; ")
         }
         return imported
     }

@@ -21,9 +21,12 @@ public enum Snapshot {
             for (name, selected) in [("page", page), ("board", list)] {
                 try await draw(RootView(model: model, selecting: selected), to: file(name))
             }
-            // A todo list's first card, as the sheet that opens on it.
+            // A todo list's first card, as the window that opens on it, at
+            // the size that window starts with.
             if let card = try store.listTasks(todoListId: list).first(where: { $0.parentTaskId == nil }) {
-                try await draw(TaskDetailView(todoListID: list, rootTaskID: card.id).environment(model), to: file("task"))
+                try await draw(
+                    TaskDetailView(todoListID: list, rootTaskID: card.id).environment(model).frame(width: 560, height: 640),
+                    to: file("task"))
             }
             // Two panes side by side, and the quick switcher over them.
             let workspace = Workspace(model: model)

@@ -21,6 +21,14 @@ if CommandLine.arguments.contains("--self-test") {
         exit(await Snapshot.write(to: folder) ? 0 : 1)
     }
     app.run()
+} else if CommandLine.arguments.contains(WindowCheck.argument),
+    let refusal = WindowCheck.refusal(
+        environment: ProcessInfo.processInfo.environment, bundleIdentifier: Bundle.main.bundleIdentifier)
+{
+    // Checks the running app's menus and windows. Refused before the app
+    // starts, so nothing of the user's is opened. See WindowCheck.swift.
+    FileHandle.standardError.write(Data("\(refusal)\n".utf8))
+    exit(2)
 } else {
     HeraclesApp.main()
 }

@@ -10,6 +10,8 @@ struct NoteDetailView: View {
     let leafID: String
     @State private var title = ""
     @State private var choosingIcon = false
+    /// Goes up each time the title is left for the note's text.
+    @State private var intoTheNote = 0
     @FocusState private var titleFocused: Bool
 
     var body: some View {
@@ -38,7 +40,16 @@ struct NoteDetailView: View {
                     .font(.largeTitle.bold())
                     .focused($titleFocused)
                     .disabled(note.trashed)
-                    .onSubmit(commitTitle)
+                    // From the title, on into the note.
+                    .onSubmit {
+                        commitTitle()
+                        intoTheNote += 1
+                    }
+                    .onKeyPress(.downArrow) {
+                        commitTitle()
+                        intoTheNote += 1
+                        return .handled
+                    }
             }
             // A page's title sits over the editor's text column, which is
             // centered once the pane is wider than a comfortable line.
@@ -56,6 +67,7 @@ struct NoteDetailView: View {
                     change: model.documentChange(for: note.id), model: model,
                     reveal: workspace.blockToReveal(in: note.id),
                     onRevealed: { workspace.didReveal(in: note.id) },
+                    focusRequest: intoTheNote,
                     onFocus: { workspace.tree.focus(leafID) })
             }
         }

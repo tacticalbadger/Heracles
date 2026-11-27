@@ -54,6 +54,18 @@ public struct PlannedReminder: Equatable, Sendable {
     public var date: Date
 }
 
+/// A notification the system is holding, and what it says, where that can
+/// be read.
+public struct ScheduledReminder: Equatable, Sendable {
+    public var identifier: String
+    public var title: String?
+
+    public init(identifier: String, title: String?) {
+        self.identifier = identifier
+        self.title = title
+    }
+}
+
 /// What to change so that the notifications the system holds match the
 /// reminders the library has. Worked out apart from the system calls, so it
 /// can be tested.
@@ -64,19 +76,99 @@ public struct ReminderPlan: Equatable, Sendable {
     public let toAdd: [PlannedReminder]
     public let toRemove: [String]
 
+    /// The plan, knowing the waiting notifications only by their identifiers.
     public init(reminders: [Reminder], scheduled: [String], now: Date) {
-        let wanted: [PlannedReminder] = reminders.compactMap { reminder in
-            guard let date = TaskDates.date(from: reminder.remindAt), date > now else { return nil }
+        self.init(reminders: reminders, waiting: scheduled.map { ScheduledReminder(identifier: $0, title: nil) }, now: now)
+    }
+
+    /// The plan, knowing what each waiting notification says. One that names
+    /// a task by a title it no longer has is scheduled again: its
+    /// identifier does not change when a task is renamed, so nothing else
+    /// would notice. It is not also removed, because the system replaces a
+    /// waiting notification when another is scheduled under its identifier.
+    public init(reminders: [Reminder], waiting: [ScheduledReminder], now: Date) {
+        var wanted: [PlannedReminder] = []
+        var wantedIDs: Set<String> = []
+        for reminder in reminders {
+            guard let date = TaskDates.date(from: reminder.remindAt), date > now else { continue }
+            let identifier = "\(Self.prefix)\(reminder.taskId).\(reminder.remindAt)"
+            // One notification for a reminder, however often it is listed.
+            guard wantedIDs.insert(identifier).inserted else { continue }
             let title = reminder.taskTitle.trimmingCharacters(in: .whitespaces)
-            return PlannedReminder(
-                identifier: "\(Self.prefix)\(reminder.taskId).\(reminder.remindAt)",
-                title: title.isEmpty ? "Untitled task" : title,
-                noteID: reminder.todoListId, date: date)
+            wanted.append(
+                PlannedReminder(
+                    identifier: identifier, title: title.isEmpty ? "Untitled task" : title,
+                    noteID: reminder.todoListId, date: date))
         }
-        let wantedIDs = Set(wanted.map(\.identifier))
-        let existing = Set(scheduled)
-        toAdd = wanted.filter { !existing.contains($0.identifier) }
-        toRemove = scheduled.filter { $0.hasPrefix(Self.prefix) && !wantedIDs.contains($0) }
+        var says: [String: String?] = [:]
+        for notification in waiting where says[notification.identifier] == nil {
+            says[notification.identifier] = .some(notification.title)
+        }
+        toAdd = wanted.filter { reminder in
+            // Not waiting at all, or waiting and saying something else.
+            guard let said = says[reminder.identifier] else { return true }
+            return said != nil && said != reminder.title
+        }
+        toRemove = waiting.map(\.identifier).filter { $0.hasPrefix(Self.prefix) && !wantedIDs.contains($0) }
+    }
+}
+
+/// Whether this run hands reminders to the system.
+enum ReminderPolicy {
+    /// A run against a library named in the environment is a trial or a
+    /// test. Its reminders are not the user's: handing them over would put
+    /// a fixture's notifications on the screen, and take back the ones the
+    /// real library is waiting on.
+    static func schedules(environment: [String: String]) -> Bool {
+        (environment["HERACLES_DATA_DIR"] ?? "").isEmpty
+    }
+}
+
+/// A task shown in a window of its own: which list it is on, and the task
+/// the window was opened on. One window for each: asked for again, the
+/// window that has it comes forward.
+public struct TaskWindowID: Hashable, Codable, Sendable {
+    public var todoListID: String
+    public var taskID: String
+
+    public init(todoListID: String, taskID: String) {
+        self.todoListID = todoListID
+        self.taskID = taskID
+    }
+}
+
+/// Which task a task window shows: the task it starts from, and the
+/// subtasks drilled into below it, outermost first.
+struct TaskPath: Equatable {
+    var root: String
+    var down: [String] = []
+
+    /// The task being shown.
+    var shown: String { down.last ?? root }
+
+    /// The tasks above the one shown, outermost first.
+    var above: [String] { Array(([root] + down).dropLast()) }
+
+    /// The path as it stands among the tasks the board has now. `nil` when
+    /// the task the window starts from has gone, and the window should
+    /// close.
+    func settled(among tasks: [TodoTask]) -> TaskPath? {
+        let byID = Dictionary(tasks.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var chain = [root] + down
+        // A subtask that has become a card is no longer under anything: the
+        // window starts from it, and there is no way back up.
+        if let card = chain.indices.dropFirst().last(where: { byID[chain[$0]].map { $0.parentTaskId == nil } ?? false }) {
+            chain.removeFirst(card)
+        }
+        guard byID[chain[0]] != nil else { return nil }
+        // The way down holds for as long as each task is there, under the
+        // one before.
+        var settled = TaskPath(root: chain[0])
+        for id in chain.dropFirst() {
+            guard byID[id]?.parentTaskId == settled.shown else { break }
+            settled.down.append(id)
+        }
+        return settled
     }
 }
 
@@ -110,8 +202,10 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
 
     func sync() async {
         guard let reminders = try? model.store.listReminders() else { return }
-        let scheduled = await center.pendingNotificationRequests().map(\.identifier)
-        let plan = ReminderPlan(reminders: reminders, scheduled: scheduled, now: .now)
+        let waiting = await center.pendingNotificationRequests().map {
+            ScheduledReminder(identifier: $0.identifier, title: $0.content.title)
+        }
+        let plan = ReminderPlan(reminders: reminders, waiting: waiting, now: .now)
         center.removePendingNotificationRequests(withIdentifiers: plan.toRemove)
         guard !plan.toAdd.isEmpty else { return }
         // Asked the first time there is something to remind about, not at launch.

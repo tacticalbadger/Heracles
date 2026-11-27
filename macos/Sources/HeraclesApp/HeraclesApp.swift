@@ -27,11 +27,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The update rehearsal starts copies of the app one after another
         // and leaves them behind whatever is being worked in.
         let rehearsal = CommandLine.arguments.contains("--demo-update")
-        if !rehearsal { NSApp.activate(ignoringOtherApps: true) }
+        // The window check (macos/window-check.sh) is a copy too. main.swift
+        // has already refused it anywhere else.
+        let windowCheck = CommandLine.arguments.contains(WindowCheck.argument)
+        if !rehearsal, !windowCheck { NSApp.activate(ignoringOtherApps: true) }
 
         // Reminders are scheduled with the system, so they arrive whether or
         // not the app is running, and rescheduled whenever tasks change.
-        if let model = Self.model, let scheduler = ReminderScheduler(model: model) {
+        // A run on a library of its own leaves the system's reminders alone.
+        if ReminderPolicy.schedules(environment: ProcessInfo.processInfo.environment),
+            let model = Self.model, let scheduler = ReminderScheduler(model: model)
+        {
             reminders = scheduler
             model.afterChange = { [weak scheduler] in scheduler?.syncSoon() }
             scheduler.syncSoon()
@@ -39,6 +45,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Over-the-air updates. Not every run looks: see `UpdatePolicy`.
         Updates.shared.start()
+        if windowCheck, let model = Self.model {
+            Task { @MainActor in
+                let passed = await WindowCheck.run(model)
+                exit(passed ? 0 : 1)
+            }
+        }
         // For the update rehearsal (macos/update-rehearsal.sh): look two
         // seconds after launch and not at the next scheduled time, and say
         // whether this run looks at all. Four seconds on, when a look at a
@@ -57,8 +69,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let model = Self.model else { return .terminateNow }
+        // A title, or a field of a task, is handed over when the keyboard
+        // leaves it. Quitting takes the keyboard away first, so what is
+        // still being typed there is kept too.
+        for window in sender.windows { window.makeFirstResponder(nil) }
         // Quitting waits for every editor to hand over what it is holding.
         Task {
+            // A moment for the fields to notice that the keyboard has gone.
+            try? await Task.sleep(for: .milliseconds(50))
             await model.flushEditors()
             sender.reply(toApplicationShouldTerminate: true)
         }
@@ -67,6 +85,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 public struct HeraclesApp: App {
+    /// The windows on the library. Named so that the menu can open another.
+    static let mainWindowID = "main"
+    /// The windows that each show one task.
+    static let taskWindowID = "task"
+
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model: AppModel?
     @State private var startupError: String?
@@ -81,13 +104,12 @@ public struct HeraclesApp: App {
             _model = State(initialValue: model)
             _importReport = State(initialValue: report)
         } catch {
-            let reason = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
-            _startupError = State(initialValue: reason)
+            _startupError = State(initialValue: AppModel.words(for: error))
         }
     }
 
     public var body: some Scene {
-        WindowGroup("Heracles") {
+        WindowGroup("Heracles", id: Self.mainWindowID) {
             if let model {
                 RootView(model: model)
                     .sheet(item: $importReport) { report in
@@ -101,6 +123,16 @@ public struct HeraclesApp: App {
         }
         .defaultSize(width: 1200, height: 800)
         .commands { HeraclesCommands() }
+
+        // A task opens in a window of its own, one for each task. It is not
+        // modal: the board stays in reach, and several can be open.
+        WindowGroup("Task", id: Self.taskWindowID, for: TaskWindowID.self) { $task in
+            if let model, let task {
+                TaskDetailView(todoListID: task.todoListID, rootTaskID: task.taskID)
+                    .environment(model)
+            }
+        }
+        .defaultSize(width: 560, height: 640)
     }
 }
 

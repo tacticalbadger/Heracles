@@ -25,6 +25,9 @@ public final class AppModel {
     public var lastError: String?
     /// A link the app was asked to open. The frontmost window takes it.
     public var pendingLink: AppLink?
+    /// A task someone asked to see. Whichever window sees it first opens
+    /// the task's own window, or brings it forward if it is open already.
+    public var taskToShow: TaskWindowID?
 
     private var documentChanges: [String: DocumentChange] = [:]
     private var boardVersions: [String: Int] = [:]
@@ -89,9 +92,23 @@ public final class AppModel {
             lastError = nil
             return value
         } catch {
-            lastError = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            lastError = Self.words(for: error)
             return nil
         }
+    }
+
+    /// Why something failed, in words for the user. The core's errors are
+    /// said in its own words, without the name of the kind of error around
+    /// them.
+    nonisolated static func words(for error: any Error) -> String {
+        if let error = error as? CoreError {
+            switch error {
+            case .NotFound(let message), .Invalid(let message), .LastNotebook(let message), .Database(let message),
+                .Io(let message), .Document(let message):
+                return message
+            }
+        }
+        return (error as? LocalizedError)?.errorDescription ?? String(describing: error)
     }
 
     @discardableResult

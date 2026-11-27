@@ -103,6 +103,7 @@ struct SidebarView: View {
                 snippet(hit).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
             .tag(hit.note.id)
+            .contextMenu { noteMenu(hit.note) }
         }
     }
 

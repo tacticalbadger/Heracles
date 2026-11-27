@@ -89,6 +89,37 @@ struct WorkspaceTests {
         #expect(workspace.tree.activeNoteID == imported[1].id)
     }
 
+    @Test func aFileThatCannotBeImportedIsNamedAndDoesNotStopTheOthers() throws {
+        let folder = directory.appendingPathComponent("files")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let missing = folder.appendingPathComponent("Missing.md")
+        let alsoMissing = folder.appendingPathComponent("Gone.html")
+        let good = folder.appendingPathComponent("One.md")
+        try "# One\n".write(to: good, atomically: true, encoding: .utf8)
+
+        let imported = workspace.importFiles([missing, good, alsoMissing])
+
+        #expect(imported.map(\.title) == ["One"])
+        let said = try #require(model.lastError, "a later file that came in does not hide the ones that did not")
+        #expect(said.hasPrefix("Could not import "))
+        #expect(said.contains("Missing.md"))
+        #expect(said.contains("Gone.html"))
+        #expect(!said.contains("One.md"))
+    }
+
+    @Test func anImportThatAllCameInSaysNothing() throws {
+        let folder = directory.appendingPathComponent("files")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let good = folder.appendingPathComponent("One.md")
+        try "# One\n".write(to: good, atomically: true, encoding: .utf8)
+        model.rename("missing", to: "x")
+        #expect(model.lastError != nil)
+
+        workspace.importFiles([good])
+
+        #expect(model.lastError == nil)
+    }
+
     @Test func theOpenNoteIsExportedAsMarkdown() throws {
         let page = try #require(workspace.createNote(.page))
         model.saveDocument(

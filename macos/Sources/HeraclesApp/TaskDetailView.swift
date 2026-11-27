@@ -1,22 +1,34 @@
 import HeraclesCore
 import SwiftUI
 
-/// Everything about one task: its text, dates, labels and reminders, its
-/// subtasks, and the comments on it. Opening a subtask shows that subtask
-/// in the same sheet, with a way back.
+/// Everything about one task, in a window of its own: its text, dates,
+/// labels and reminders, its subtasks, and the comments on it. Opening a
+/// subtask shows that subtask in the same window, with a way back.
+///
+/// The window is not modal: the board stays in reach behind it, and each
+/// task that is opened has a window of its own.
 struct TaskDetailView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let todoListID: String
-    let rootTaskID: String
-    /// The subtasks drilled into, outermost first.
-    @State private var path: [String] = []
+    /// The task shown, and the way down to it from the task the window
+    /// was opened on.
+    @State private var path: TaskPath
     @State private var tasks: [TodoTask] = []
     @State private var columns: [TaskColumn] = []
     @State private var comments: [TaskComment] = []
 
-    private var taskID: String { path.last ?? rootTaskID }
+    init(todoListID: String, rootTaskID: String) {
+        self.todoListID = todoListID
+        _path = State(initialValue: TaskPath(root: rootTaskID))
+    }
+
+    private var taskID: String { path.shown }
     private var task: TodoTask? { tasks.first { $0.id == taskID } }
+
+    /// False once the list is in the trash or has been deleted. Its tasks
+    /// cannot be changed then, and the window closes.
+    private var listIsOpen: Bool { model.library.note(todoListID)?.trashed == false }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,7 +37,7 @@ struct TaskDetailView: View {
             if let task {
                 ScrollView {
                     TaskFields(task: task, subtasks: tasks.filter { $0.parentTaskId == task.id }, columns: columns, comments: comments) {
-                        path.append($0)
+                        path.down.append($0)
                     }
                     .padding(20)
                     // A different task gets fresh fields, not the last one's drafts.
@@ -35,40 +47,50 @@ struct TaskDetailView: View {
                 ContentUnavailableView("This task no longer exists", systemImage: "checklist")
             }
         }
-        .frame(width: 560, height: 640)
+        .frame(minWidth: 440, idealWidth: 560, minHeight: 360, idealHeight: 640)
+        .navigationTitle(task.map { $0.title.isEmpty ? "Untitled" : $0.title } ?? "Task")
         // Reloads when another task is shown and whenever the board changes,
         // in this window or any other.
-        .task(id: Reload(task: taskID, version: model.boardVersion(for: todoListID))) {
+        .task(id: Reload(task: taskID, version: model.boardVersion(for: todoListID), listIsOpen: listIsOpen)) {
+            guard listIsOpen else {
+                dismiss()
+                return
+            }
             tasks = model.tasks(of: todoListID)
             columns = model.columns(of: todoListID)
-            comments = model.comments(on: taskID)
-            // The task, or one it was reached through, may have been deleted.
-            if !tasks.contains(where: { $0.id == rootTaskID }) {
+            // The task, or one it was reached through, may have been
+            // deleted, and a subtask may have become a card of its own.
+            guard let settled = path.settled(among: tasks) else {
                 dismiss()
-            } else {
-                path = Array(path.prefix { id in tasks.contains { $0.id == id } })
+                return
             }
+            if settled != path { path = settled }
+            comments = model.comments(on: settled.shown)
         }
     }
 
     private var header: some View {
         HStack {
-            if !path.isEmpty {
-                Button("Back", systemImage: "chevron.left") { path.removeLast() }
+            if !path.down.isEmpty {
+                Button("Back", systemImage: "chevron.left") { path.down.removeLast() }
             }
             // The chain of tasks above this one.
-            Text(([rootTaskID] + path).dropLast().compactMap { id in tasks.first { $0.id == id }?.title }.joined(separator: " › "))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            Text(
+                path.above.compactMap { id in tasks.first { $0.id == id }.map { $0.title.isEmpty ? "Untitled" : $0.title } }
+                    .joined(separator: " › ")
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
             Spacer()
             if let task {
                 Button("Delete", systemImage: "trash", role: .destructive) {
                     model.deleteTask(task.id)
-                    if path.isEmpty { dismiss() } else { path.removeLast() }
+                    if path.down.isEmpty { dismiss() } else { path.down.removeLast() }
                 }
             }
-            Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            // Not "Done": a board's last column is called that.
+            Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
         }
         .padding(12)
     }
@@ -76,6 +98,7 @@ struct TaskDetailView: View {
     private struct Reload: Hashable {
         let task: String
         let version: Int
+        let listIsOpen: Bool
     }
 }
 
@@ -97,6 +120,12 @@ private struct TaskFields: View {
     @State private var newReminder = Date.now.addingTimeInterval(3600)
     @State private var editing: TaskComment?
     @State private var editedBody = ""
+    @FocusState private var focus: Field?
+
+    /// The fields whose text is kept until the keyboard leaves them.
+    private enum Field: Hashable {
+        case title, notes, location
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -107,12 +136,14 @@ private struct TaskFields: View {
                 TextField("Task", text: $title, axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(.title2.bold())
+                    .focused($focus, equals: .title)
                     .onSubmit { save(title: title) }
             }
             section("Notes") {
                 TextEditor(text: $notes)
                     .font(.body)
                     .frame(minHeight: 70)
+                    .focused($focus, equals: .notes)
                     .scrollContentBackground(.hidden)
                     .padding(6)
                     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
@@ -137,6 +168,7 @@ private struct TaskFields: View {
                     Text("Location").foregroundStyle(.secondary)
                     TextField("None", text: $location)
                         .textFieldStyle(.roundedBorder)
+                        .focused($focus, equals: .location)
                         .onSubmit(saveLocation)
                 }
                 if task.parentTaskId != nil, !columns.isEmpty {
@@ -242,13 +274,27 @@ private struct TaskFields: View {
             notes = task.description
             location = task.location ?? ""
         }
-        // Text is saved when the sheet moves on from it, and when it closes.
+        // Text is saved when the keyboard leaves it, when the window moves
+        // on to another task, and when it closes.
         .onDisappear {
             save(title: title)
             saveNotes()
             saveLocation()
         }
+        .onChange(of: focus) { left, _ in
+            switch left {
+            case .title: save(title: title)
+            case .notes: saveNotes()
+            case .location: saveLocation()
+            case nil: break
+            }
+        }
         .onChange(of: notes) { saveNotesSoon() }
+        // Changed from elsewhere: what is stored is shown, unless the
+        // field is being typed in.
+        .onChange(of: task.title) { if focus != .title { title = task.title } }
+        .onChange(of: task.description) { if focus != .notes { notes = task.description } }
+        .onChange(of: task.location) { if focus != .location { location = task.location ?? "" } }
         .alert("Edit comment", isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } }), presenting: editing) { comment in
             TextField("Comment", text: $editedBody)
             Button("Save") { model.updateComment(comment.id, editedBody) }

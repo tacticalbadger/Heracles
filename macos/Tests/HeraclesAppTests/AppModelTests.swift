@@ -92,6 +92,14 @@ struct AppModelTests {
         #expect(model.library.notebooks.count == 1)
     }
 
+    @Test func aFailureIsSaidInTheCoresOwnWords() {
+        model.rename("missing", to: "x")
+        #expect(model.lastError == "note `missing` does not exist")
+
+        model.delete(notebook.id)
+        #expect(model.lastError == "the last notebook cannot be deleted")
+    }
+
     @Test func deletingANoteReportsEveryIDThatWent() throws {
         let page = try #require(model.createNote(.page, in: notebook.id))
         let child = try #require(model.createNote(.page, in: page.id))

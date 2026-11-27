@@ -10,6 +10,7 @@ extension FocusedValues {
 /// The menu bar. Every item acts on the window in front.
 struct HeraclesCommands: Commands {
     @FocusedValue(\.workspace) private var workspace
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
         CommandGroup(after: .appInfo) {
@@ -24,11 +25,19 @@ struct HeraclesCommands: Commands {
                 .keyboardShortcut("t", modifiers: [.command, .shift])
             Button("New Notebook") { workspace?.createNote(.notebook) }
             Divider()
+            // Another window on the same library. ⌘N is New Page.
+            Button("New Window") { openWindow(id: HeraclesApp.mainWindowID) }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+            Divider()
             Button("Quick Open…") { workspace?.isSwitcherShown = true }
                 .keyboardShortcut("k")
             Divider()
-            Button("Close Tab") { workspace?.closeActiveTab() }
-                .keyboardShortcut("w")
+            Button("Close Tab") {
+                // In a window that has no tabs, a task's for one, the
+                // same key closes the window.
+                if let workspace { workspace.closeActiveTab() } else { NSApp.keyWindow?.performClose(nil) }
+            }
+            .keyboardShortcut("w")
         }
         CommandGroup(replacing: .importExport) {
             Button("Import…") { workspace?.chooseFilesToImport() }
@@ -85,6 +94,7 @@ struct HeraclesCommands: Commands {
             Button("Callout") { format(.block(.callout)) }
             Button("Toggle") { format(.block(.toggle)) }
             Button("Code Block") { format(.block(.code)) }
+            Button("Divider") { format(.block(.divider)) }
         }
         CommandGroup(after: .sidebar) {
             Button("Split Right") { workspace?.splitFocused(.right) }

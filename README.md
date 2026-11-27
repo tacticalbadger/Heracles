@@ -21,11 +21,11 @@ What is built, what is missing and what has not been checked is recorded in [`do
 ## Features
 
 - **Notebooks, sections and pages** in a sidebar, nested as deep as you like, with favorites, archive and trash. Trashing, restoring and deleting apply to a page and everything under it.
-- **Panes and tabs.** Split a window right or down, drag the dividers, and drag tabs between panes. Each window remembers its layout, and any number of windows can be open on the same library.
+- **Panes and tabs.** Split a window right or down, drag the dividers, and drag tabs between panes. Each window remembers its layout, and any number of windows can be open on the same library (**File ▸ New Window**).
 - **Block editor.** Headings, lists, task lists, quotes, callouts, toggles, code blocks, images and column layouts. Each block's text is a system text view, so typing, selection, spelling and dictation work as they do across the Mac.
 - **Markdown as you type**, a slash menu of blocks, and a Format menu with the usual shortcuts.
 - **Blocks you can pick up.** Each block has a handle to drag it, make columns with it, duplicate it, turn it into another kind of block, or copy a link to it. Whole blocks can be selected, copied and moved together.
-- **Kanban boards.** A todo list is a board with your own columns. Cards carry notes, priority, a due date, a deadline, labels, a location, reminders, comments and subtasks nested to any depth.
+- **Kanban boards.** A todo list is a board with your own columns, which you can rename and reorder. A card opens as a task in a window of its own, so the board stays in reach and several tasks can be open at once. Tasks carry notes, priority, a due date, a deadline, labels, a location, reminders, comments and subtasks nested to any depth.
 - **Reminders** arrive as system notifications, whether or not the app is open.
 - **Search** across every note's title and text.
 - **Quick Open** (⌘K) to jump to a note by name.
@@ -60,6 +60,7 @@ To run the tests:
 cargo test                           # the core
 swift test --package-path macos      # the bindings, the app's model and the editor
 build/Heracles.app/Contents/MacOS/Heracles --self-test
+macos/window-check.sh                # the running app's menus and windows
 ```
 
 [`BUILDING.md`](./BUILDING.md) has the details, including how to sign and publish a release.
@@ -85,6 +86,7 @@ macos/                     The Mac app (Swift)
 ├── check-build-number.sh  Stops a release nobody would be offered
 ├── verify-update.sh       Checks an update's signature against a key
 ├── test-release-scripts.sh  Checks of the two scripts above
+├── window-check.sh        Checks the running app's menus and windows
 ├── make-icon.sh           Compiles the app icon after a change to it
 ├── Icon/                  The app icon: its source and its compiled forms
 ├── Sources/HeraclesCore/  Generated bindings to the core

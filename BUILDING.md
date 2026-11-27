@@ -44,6 +44,7 @@ a build to give to someone else, see [Releasing](#releasing).
 cargo test                           # the core: storage, documents, search, import
 swift test --package-path macos      # the bindings, the app's model, the editor
 build/Heracles.app/Contents/MacOS/Heracles --self-test
+macos/window-check.sh                # the running app's menus and windows
 ```
 
 The editor's tests drive the real text views in a window that is never
@@ -58,6 +59,16 @@ and exits 0 if all pass.
 `Heracles --snapshot <folder>` draws the app's window and the editor, filled
 with a sample note that has one of every kind of block, into PNG files. It is
 a way to look at the interface from a script.
+
+`macos/window-check.sh` checks what only the running app has: its menu bar
+and its windows. It starts a copy of `build/Heracles.app` that has a bundle
+identifier and a library of its own, and the copy checks itself: that File
+has New Window and it opens another window on the library, that Format has
+Divider, and that a task opens in a window of its own, one for each task,
+which is called what the task is called and closes when the task is deleted
+or its list goes to the trash. The copy's windows show on the screen for a
+few seconds. It does not take the keyboard, and the app refuses
+`--window-check` anywhere but in such a copy.
 
 Two more checks belong to releases and are described under
 [Releasing](#releasing): `macos/test-release-scripts.sh`

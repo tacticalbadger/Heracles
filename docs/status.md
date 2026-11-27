@@ -1,12 +1,16 @@
 # Status
 
-Updated 2026-11-24. What is built, the choices behind it, what is missing
+Updated 2026-11-27. What is built, the choices behind it, what is missing
 and what has not been checked.
 
 Version 0.4.0 is the current preview on the GitHub releases page, as a
 signed and notarized disk image. From this version on the app updates
 itself. 0.4.0 is build 7, published from commit `b5559c6` with its update
 feed attached.
+
+Since 0.4.0, and not yet released: what the Windows app could do and this
+one could not (see [The Windows app](#the-windows-app) below). `CHANGELOG.md`
+lists it under Unreleased.
 
 Heracles began as a different app, built on web technology (version 0.1).
 The native app replaced it from 0.2.1 on. The original is no longer in this
@@ -15,7 +19,7 @@ across a library that it left behind.
 
 ## Built
 
-**The core** (`core/`, Rust, 195 tests via `cargo test`):
+**The core** (`core/`, Rust, 198 tests via `cargo test`):
 
 - SQLite schema with foreign keys, `ON DELETE CASCADE`, WAL, and one write
   transaction per user action. `CHECK` constraints hold the invariants:
@@ -38,7 +42,8 @@ across a library that it left behind.
   report of every repair.
 - UniFFI bindings for Swift.
 
-**The app** (`macos/`, Swift, 255 tests via `swift test`, plus `--self-test`):
+**The app** (`macos/`, Swift, 288 tests via `swift test`, plus `--self-test`
+and `macos/window-check.sh`):
 
 - Sidebar with notebooks, nested notes, favorites, archive, trash, and search.
 - Panes and tabs: splits within splits, draggable dividers, tabs that move
@@ -47,15 +52,21 @@ across a library that it left behind.
   web view, and 0.3.0 replaced it. It reads and writes the same block
   JSON, so notes carried over unchanged. See
   [The native editor](#the-native-editor) below.
-- Kanban board with drag between columns, and a task detail sheet: notes,
-  priority, dates, location, labels, reminders, nested subtasks, comments.
-- Reminders scheduled through `UNUserNotificationCenter`.
+- Kanban board with drag between columns. A column is renamed where its
+  name is, and its menu moves it left and right and deletes it.
+- A task in a window of its own, one for each task: notes, priority, dates,
+  location, labels, reminders, nested subtasks, comments. It is not modal,
+  so the board stays in reach and several tasks can be open. It closes when
+  its task is deleted or its list goes to the trash.
+- Reminders scheduled through `UNUserNotificationCenter`. One follows its
+  task when the task is renamed. A run on a library named in
+  `HERACLES_DATA_DIR` schedules none and takes none back.
 - Import of Markdown and HTML files, and Markdown export.
 - Quick Open (⌘K), icon picker, and a menu bar with a Format menu.
 - An app icon: a notebook page with a heading, a checklist and lines of
   text. It is a layered Icon Composer icon, which macOS 26 and later draw in
   their light, dark, clear and tinted styles.
-- Multiple windows on one shared model.
+- Multiple windows on one shared model, opened with File ▸ New Window.
 - `heracles://note/<id>` links, with `#block=<id>` to scroll to a block.
 - Updates over the air, through Sparkle 2.10.1. The app looks once a day
   and from Heracles ▸ Check for Updates…, shows the release notes, and
@@ -155,8 +166,14 @@ Each is easy to change now and harder later.
 - **Archive does not cascade.** Archiving a page hides the pages under it
   without archiving them, and they come back with it. Whether it should
   cascade, as trash does, is undecided.
-- **Windows is undecided.** Nothing here blocks sharing the core with a
-  Windows interface.
+- **A task's window is asked for through the model** (`AppModel.taskToShow`),
+  and whichever window on the library sees the request first opens it. That
+  is the one way in, for a card and for the window check alike.
+- **The windows on the library are a named group** (`main`), so that the
+  menu can open another. They had no name through 0.4.0, and the system
+  keeps a window's place and its panes under the group's name: the first
+  start of a later version may open one window with no tabs. No note is
+  affected.
 - **The update feed is a file on each GitHub release.**
   `releases/latest/download/appcast.xml` always
   serves the newest release's copy, so there is no server and no second
@@ -168,6 +185,41 @@ Each is easy to change now and harder later.
 - **The app is no longer a single executable.** Sparkle's framework and its
   two helper programs are in the bundle. Its two XPC services, which are
   for sandboxed apps, are left out. Nothing has an entitlement.
+
+## The Windows app
+
+Heracles for Windows is a repository of its own
+([Heracles-Windows](https://github.com/tacticalbadger/Heracles-Windows)):
+a C# interface over this same core, built with this app as its reference.
+On 2026-11-27 its version 0.3.1 was read against this app, and what it had
+that this one lacked was brought across:
+
+- renaming a board's columns and moving them left and right;
+- a task in a window of its own, in place of a sheet, and a subtask made a
+  card becoming the task its window starts from;
+- a New Window command, and Divider in the Format menu;
+- a reminder following its task's new name;
+- an import naming each file it could not read;
+- Return in a title moving into the note, and a menu on search results;
+- no reminders handed to the system by a run on a trial library;
+- the core's reading of `file://` picture addresses.
+
+Left as they are, on purpose:
+
+- **The two cores differ in one place.** Across the binding, the Windows
+  app's task patch is a flat record (a value and a `clear_…` flag for each
+  field that can be emptied), because C# has no optional of an optional.
+  Swift has, so this core keeps the nested one. `core/uniffi.toml` there is
+  read only by the C# generator. Everything else in `core/` is the same,
+  file for file.
+- A task's window comes back when the app starts again, if it was open.
+  On Windows it does not.
+- A card or a tab being dragged is carried as text here. Let go over a text
+  field that is being typed in, it types its own name into the field. The
+  Windows app carries them under a name of their own.
+
+What this app has and the Windows app does not is recorded in that
+repository's notes.
 
 ## Not built yet
 
@@ -202,6 +254,20 @@ well as for opening notes.
 - The importer has only been run on databases built by its tests. No real
   library from the original app was on the machine it was written on. Try
   it first with `HERACLES_DATA_DIR` pointing at a copy.
+- **What came across from the Windows app was checked by tests and by
+  `macos/window-check.sh`, and not by hand.** The rules have tests that
+  failed first: moving and renaming a column, which card a drop moves,
+  which reminders are scheduled again, which task a window shows, what an
+  import says. The window check ran in the built app: the two menu items
+  are there, New Window opens a window, a task's window opens once for each
+  task, follows the task's name, and closes with the task or its list; with
+  the menu items and the window taken out again, the check failed in ten
+  places. The board was looked at as drawn by `--snapshot`, in the dark
+  style. Never done: typing a column's name in its field, choosing from its
+  menu, pressing Return in a title, right-clicking a search result, ⌘W in a
+  task's window, and quitting with a title or a task's field half typed,
+  which is meant to keep it. Nor has a copy of 0.4.0 with windows open been
+  replaced by this version to see what it starts with.
 - **Nobody has used the app by hand yet.** The windows were checked by
   drawing them offscreen (`--snapshot`), in light and dark, and the editor by
   tests that drive the real text views with keys and the clipboard, in

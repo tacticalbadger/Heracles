@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+What the Windows app (0.3.1) could do and the Mac app could not, brought
+across.
+
+### Added
+
+- **A board's columns can be renamed and moved.** Click a column's name to
+  change it, where it stands. The **…** button beside it, and a right-click
+  on the heading, move the column left or right and delete it. Until now a
+  column could only be deleted.
+- **A task opens in a window of its own**, in place of a sheet over the
+  board. The board stays in reach behind it, each task that is opened has
+  its own window, and a task asked for again brings its window forward. The
+  window is called what the task is called, closes when the task is deleted
+  or its list goes to the trash, and its button says Close. A subtask that
+  is made a card becomes the task its window starts from.
+- **File ▸ New Window** (⌥⌘N) opens another window on the library. The
+  File menu's own commands had taken the place of the system's item, and
+  there was no way left to ask for a second window.
+- **Format ▸ Divider.**
+- Return, or the down arrow, in a note's title moves on into the note.
+- A right-click on a search result in the sidebar offers what a right-click
+  on the note does.
+- `macos/window-check.sh` checks the running app's menus and windows, in a
+  copy of the build with an identifier and a library of its own.
+
+### Fixed
+
+- A reminder follows its task when the task is renamed. The notification
+  kept the old name.
+- An import says which files could not be read, each by name. A file that
+  failed was passed over in silence when a later one came in.
+- When something goes wrong the app says it in plain words. It showed the
+  error's internal name around them.
+- A field of a task (its title, notes and location) is saved when the
+  keyboard leaves it, and shows a change made elsewhere unless it is being
+  typed in. Quitting takes the keyboard from a title or a task's field
+  first, so that what is still being typed there is handed over. (Not yet
+  tried by hand: see `docs/status.md`.)
+- A run on a library named in `HERACLES_DATA_DIR` leaves the system's
+  reminders alone. It used to take back the real library's and schedule
+  its own.
+- Text dropped on a board that is not one of its cards (a tab, a card of
+  another board) is no longer taken for a card.
+- A picture named by a `file://` address on another machine is left as
+  written when a file is imported. Its address was read as a path on this
+  Mac.
+
 ### Removed
 
 - **The original app.** Heracles began as an app built on web technology
@@ -22,6 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The first time this version starts, it may open one window without the
+  tabs the last one had. The windows on the library have a name now, so
+  that the menu can open another, and the system keeps a window's place
+  and its panes under that name. No note is affected.
 - `docs/status.md` replaces `docs/review-and-native-rewrite.md`: what is
   built, the choices behind it, what is missing and what has not been
   checked. `BUILDING.md` covers the native app only.
